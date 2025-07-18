@@ -1,0 +1,24 @@
+[package]
+name = "text-reader"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Local document listening with installed Windows voices"
+
+[dependencies]
+anyhow = "1.0.104"
+eframe = { version = "=0.37.0", default-features = false, features = ["default_fonts", "glow", "accesskit"] }
+rfd = "0.15.4"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.10.9"
+semver = "1.0.28"
+ureq = "3.5.0"
+zip = { version = "4.6.1", default-features = false, features = ["deflate-flate2"] }
+quick-xml = "0.41.0"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_Media_Speech", "Win32_Media_Audio", "Win32_System_Com", "Win32_System_Threading", "Win32_Foundation", "Win32_Storage_FileSystem"] }
+
+[profile.release]
+strip = "debuginfo"
