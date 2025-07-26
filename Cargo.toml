@@ -9,7 +9,7 @@ description = "Local document listening with installed Windows voices"
 anyhow = "1.0.104"
 eframe = { version = "=0.37.0", default-features = false, features = ["default_fonts", "glow", "accesskit"] }
 rfd = "0.15.4"
-serde = { version = "1.0.229", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.154"
 sha2 = "0.10.9"
 semver = "1.0.28"
