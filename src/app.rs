@@ -1,5 +1,6 @@
 use eframe::egui::{self, Color32, RichText};
 use std::{
+    path::PathBuf,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -30,6 +31,13 @@ enum FileCommand {
 enum NetCommand {
     Check(bool),
     Install(Update),
+    PrepareInstall(PathBuf),
+}
+enum Installation {
+    None,
+    Downloaded(PathBuf),
+    Preparing,
+    Ready,
 }
 enum Event {
     Loaded(Result<Session, String>),
@@ -41,6 +49,7 @@ enum Event {
     Check(bool, Result<Option<Update>, String>),
     Progress(&'static str, f32),
     FileDone(Result<String, String>),
+    Downloaded(Result<PathBuf, String>),
     Install(Result<(), String>),
 }
 
@@ -72,7 +81,8 @@ pub struct App {
     last_save: Instant,
     saving: bool,
     closing: bool,
-    install_pending: bool,
+    installation: Installation,
+    save_failed: bool,
     scroll_to_cursor: bool,
     follow: bool,
     speech: SyncSender<SpeechCommand>,
@@ -248,7 +258,7 @@ impl App {
                             Event::Check(startup, updater::check().map_err(|e| format!("{e:#}"))),
                         ),
                         NetCommand::Install(update) => {
-                            let result = (|| -> anyhow::Result<()> {
+                            let result = (|| -> anyhow::Result<PathBuf> {
                                 let dir = storage::data_dir().join("updates");
                                 let mut last = -1i32;
                                 let staged = updater::download(&update, &dir, |p| {
@@ -262,14 +272,25 @@ impl App {
                                         );
                                     }
                                 })?;
-                                updater::stage_install(&staged, &dir)
+                                Ok(staged)
                             })();
                             publish(
                                 &tx,
                                 &ctx,
-                                Event::Install(result.map_err(|e| format!("{e:#}"))),
+                                Event::Downloaded(result.map_err(|e| format!("{e:#}"))),
                             );
                         }
+                        NetCommand::PrepareInstall(staged) => publish(
+                            &tx,
+                            &ctx,
+                            Event::Install(
+                                updater::stage_install(
+                                    &staged,
+                                    &storage::data_dir().join("updates"),
+                                )
+                                .map_err(|e| format!("{e:#}")),
+                            ),
+                        ),
                     }
                 }
             });
@@ -325,7 +346,8 @@ impl App {
             last_save: Instant::now(),
             saving: false,
             closing: false,
-            install_pending: false,
+            installation: Installation::None,
+            save_failed: false,
             scroll_to_cursor: false,
             follow: true,
             speech,
@@ -381,6 +403,7 @@ impl App {
         if self.dirty
             && !self.saving
             && !self.load_failed
+            && !self.save_failed
             && self.saver.try_send(self.session.clone()).is_ok()
         {
             self.saving = true;
@@ -474,7 +497,10 @@ impl App {
                     if let Err(e) = result {
                         self.message = e;
                         self.closing = false;
-                        self.install_pending = false;
+                        self.installation = Installation::None;
+                        self.net_busy = false;
+                        self.save_failed = true;
+                        self.dirty = true;
                     }
                 }
                 Event::Check(startup, result) => {
@@ -501,18 +527,31 @@ impl App {
                     self.progress = None;
                     self.message = result.unwrap_or_else(|e| e);
                 }
-                Event::Install(result) => {
-                    self.net_busy = false;
+                Event::Downloaded(result) => {
                     self.progress = None;
                     match result {
-                        Ok(()) => {
+                        Ok(path) => {
                             self.stop();
-                            self.install_pending = true;
+                            self.installation = Installation::Downloaded(path);
                             self.closing = true;
                             self.cancel.store(true, Ordering::Relaxed);
                             self.mark_dirty();
                         }
-                        Err(e) => self.message = e,
+                        Err(e) => {
+                            self.net_busy = false;
+                            self.message = e;
+                        }
+                    }
+                }
+                Event::Install(result) => {
+                    self.net_busy = false;
+                    match result {
+                        Ok(()) => self.installation = Installation::Ready,
+                        Err(e) => {
+                            self.installation = Installation::None;
+                            self.closing = false;
+                            self.message = e;
+                        }
                     }
                 }
             }
@@ -520,11 +559,25 @@ impl App {
         if self.dirty && (self.closing || self.last_save.elapsed() > Duration::from_secs(2)) {
             self.request_save();
         }
-        if self.dirty || self.saving {
+        if (self.dirty && !self.save_failed && !self.load_failed) || self.saving {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
         if self.closing && !self.saving && !self.dirty {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            match &self.installation {
+                Installation::Downloaded(path) => {
+                    if self
+                        .network
+                        .try_send(NetCommand::PrepareInstall(path.clone()))
+                        .is_ok()
+                    {
+                        self.installation = Installation::Preparing;
+                    }
+                }
+                Installation::Preparing => {}
+                Installation::None | Installation::Ready => {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close)
+                }
+            }
         }
     }
 
@@ -538,10 +591,9 @@ impl App {
                     egui::Button::new("Open document…"),
                 )
                 .clicked()
+                && self.files.try_send(FileCommand::Open).is_ok()
             {
-                if self.files.try_send(FileCommand::Open).is_ok() {
-                    self.file_busy = true;
-                }
+                self.file_busy = true;
             }
             if ui
                 .add_enabled(
@@ -663,18 +715,13 @@ impl App {
             .show(ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.heading("Chapters");
-                    for chapter in &doc.chapters {
+                    let active_chapter = doc
+                        .chapters
+                        .partition_point(|c| c.start <= self.cursor)
+                        .saturating_sub(1);
+                    for (index, chapter) in doc.chapters.iter().enumerate() {
                         if ui
-                            .selectable_label(
-                                self.cursor >= chapter.start
-                                    && doc
-                                        .chapters
-                                        .iter()
-                                        .filter(|c| c.start <= self.cursor)
-                                        .last()
-                                        .is_some_and(|c| c.start == chapter.start),
-                                &chapter.title,
-                            )
+                            .selectable_label(index == active_chapter, &chapter.title)
                             .clicked()
                         {
                             self.seek(chapter.start);
@@ -809,7 +856,7 @@ impl App {
                 if ui.add_enabled(!self.net_busy,egui::Button::new("Check for updates")).clicked(){self.check_updates(false);}
                 ui.label(&self.update_message);
                 if let Some(update)=self.available.clone()
-                    && ui.add_enabled(!self.net_busy && !self.file_busy && !self.load_failed,egui::Button::new("Download and install")).clicked()
+                    && ui.add_enabled(!self.net_busy && !self.file_busy && !self.load_failed && !self.save_failed && !self.closing,egui::Button::new("Download and install")).clicked()
                     && self.network.try_send(NetCommand::Install(update)).is_ok() {self.net_busy=true;self.message="Downloading a verified update. TextReader will save your session and restart after installation.".into();}
                 ui.label("Downloads start only when you click Download and install. A published executable and SHA256SUMS.txt are required.");
                 ui.hyperlink_to("Canonical repository (planned)",updater::REPOSITORY);
@@ -823,9 +870,8 @@ impl App {
         egui::Window::new("Paste a document").open(&mut open).default_size([650.0,420.0]).show(ctx,|ui| {
             ui.label("Paste up to 4 MiB of text. Blank lines separate paragraphs; # headings mark chapters.");
             egui::ScrollArea::vertical().max_height(300.0).show(ui,|ui|{ui.add(egui::TextEdit::multiline(&mut self.paste).desired_rows(14).desired_width(f32::INFINITY).char_limit(4*1024*1024));});
-            if ui.add_enabled(!self.file_busy,egui::Button::new("Read this text")).clicked(){
-                if self.files.try_send(FileCommand::Paste(std::mem::take(&mut self.paste))).is_ok(){self.file_busy=true;self.paste_open=false;}
-            }
+            if ui.add_enabled(!self.file_busy,egui::Button::new("Read this text")).clicked()
+                && self.files.try_send(FileCommand::Paste(std::mem::take(&mut self.paste))).is_ok(){self.file_busy=true;self.paste_open=false;}
         });
         self.paste_open = open && self.paste_open;
     }
@@ -860,6 +906,23 @@ impl eframe::App for App {
         }
         if self.load_failed {
             ui.colored_label(Color32::DARK_RED,"Session could not be loaded. Automatic saving is disabled to preserve the original. Close TextReader and back up/reset session.json to restore saving.");
+        }
+        if self.save_failed {
+            ui.horizontal(|ui| {
+                ui.colored_label(
+                    Color32::DARK_RED,
+                    "Your latest changes have not been saved.",
+                );
+                if ui.button("Retry saving").clicked() {
+                    self.save_failed = false;
+                    self.request_save();
+                }
+                if ui.button("Close without saving").clicked() {
+                    self.dirty = false;
+                    self.closing = true;
+                    self.installation = Installation::None;
+                }
+            });
         }
         ui.separator();
         self.reader(ui);

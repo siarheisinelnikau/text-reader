@@ -65,8 +65,20 @@ pub fn load(dir: &Path) -> Result<Session> {
             "Saved document has invalid chunks."
         );
         ensure!(
-            doc.chapters.iter().all(|c| c.start < doc.chunks.len()),
+            doc.chapters.iter().all(|c| c.start < doc.chunks.len())
+                && doc
+                    .chapters
+                    .windows(2)
+                    .all(|pair| pair[0].start < pair[1].start),
             "Saved document has invalid chapters."
+        );
+        ensure!(
+            doc.chunks
+                .iter()
+                .all(|c| !c.text.trim().is_empty() && c.text.chars().count() <= 300)
+                && doc.chunks.iter().map(|c| c.text.len()).sum::<usize>()
+                    <= crate::document::MAX_TEXT_BYTES,
+            "Saved document text is invalid or too large."
         );
     }
     Ok(session)
@@ -115,7 +127,9 @@ mod tests {
     use super::*;
     #[test]
     fn isolated_persistence_and_corruption() {
-        let dir = std::env::temp_dir().join(format!("textreader-test-{}", std::process::id()));
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join(".test-output")
+            .join(format!("storage-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let mut s = Session {
             startup_updates: false,
