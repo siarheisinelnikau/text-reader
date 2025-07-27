@@ -263,7 +263,7 @@ fn replace_portable(target: &Path, staged: &Path, expected: &str) -> Result<Path
         "An earlier staged executable exists at {}.",
         next.display()
     );
-    std::fs::copy(&staged, &next).context(
+    std::fs::copy(staged, &next).context(
         "Cannot write to the installation folder. Move the portable app to a writable folder.",
     )?;
     if file_hash(&next)? != expected {
@@ -272,9 +272,9 @@ fn replace_portable(target: &Path, staged: &Path, expected: &str) -> Result<Path
             "The copied executable failed verification. The existing installation was preserved."
         );
     }
-    std::fs::rename(&target, &backup)?;
-    if let Err(e) = std::fs::rename(&next, &target) {
-        let _ = std::fs::rename(&backup, &target);
+    std::fs::rename(target, &backup)?;
+    if let Err(e) = std::fs::rename(&next, target) {
+        let _ = std::fs::rename(&backup, target);
         return Err(e.into());
     }
     Ok(backup)
@@ -332,8 +332,9 @@ mod tests {
 
     #[test]
     fn synthetic_portable_replacement_preserves_old_on_integrity_failure() {
-        let dir =
-            std::env::temp_dir().join(format!("textreader-update-test-{}", std::process::id()));
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join(".test-output")
+            .join(format!("updater-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let target = dir.join("fixture.exe");
         let staged = dir.join("fixture.download");

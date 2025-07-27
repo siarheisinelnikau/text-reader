@@ -1,0 +1,9 @@
+# A quiet beginning
+
+This is a synthetic TextReader fixture. It is safe to use for manual speech checks after permission is granted.
+
+Paragraph two has a bookmark destination. Unicode stays intact: café, Привет, 日本語.
+
+# A second chapter
+
+The final chapter checks navigation and completion. No private data is included.

@@ -127,7 +127,10 @@ fn split_chunks(text: &str) -> Vec<String> {
         // Bound even pathological unbroken input without slicing inside UTF-8.
         for part in word.chars().collect::<Vec<_>>().chunks(280) {
             let part: String = part.iter().collect();
-            if current.chars().count() + part.chars().count() > 300 && !current.is_empty() {
+            if current.chars().count() + part.chars().count() + usize::from(!current.is_empty())
+                > 300
+                && !current.is_empty()
+            {
                 result.push(std::mem::take(&mut current));
             }
             if !current.is_empty() {
@@ -167,6 +170,12 @@ mod tests {
         assert!(Document::from_text("".into(), "x".repeat(MAX_TEXT_BYTES + 1)).is_err());
         let d = Document::from_text("".into(), "文".repeat(2000)).unwrap();
         assert!(d.chunks.iter().all(|c| c.text.chars().count() <= 300));
+        let d = Document::from_text(
+            "".into(),
+            format!("{} {}", "x".repeat(150), "y".repeat(150)),
+        )
+        .unwrap();
+        assert_eq!(d.chunks.len(), 2);
     }
     #[test]
     fn identity_ignores_file_name() {

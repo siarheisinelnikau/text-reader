@@ -233,9 +233,17 @@ mod platform {
                 !path.exists(),
                 "The destination was created during export; it has been preserved."
             );
-            // hard_link is atomic and refuses to overwrite an existing destination.
-            std::fs::hard_link(&part, path)
+            // Same-folder Windows move is atomic and refuses to overwrite an existing destination.
+            use std::os::windows::ffi::OsStrExt;
+            let source: Vec<u16> = part.as_os_str().encode_wide().chain(Some(0)).collect();
+            let dest: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+            unsafe {
+                windows::Win32::Storage::FileSystem::MoveFileW(
+                    PCWSTR(source.as_ptr()),
+                    PCWSTR(dest.as_ptr()),
+                )
                 .context("Cannot finalize WAV in the selected folder")?;
+            }
             Ok(())
         })();
         drop(sapi);
