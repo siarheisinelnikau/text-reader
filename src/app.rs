@@ -827,11 +827,16 @@ impl App {
                 self.scroll_to_cursor = false;
             }
             ui.separator();
-            ui.label(
-                RichText::new(&doc.chunks[self.cursor].text)
-                    .size(self.session.font_size + 2.0)
-                    .color(Color32::from_rgb(15, 76, 82)),
-            );
+            egui::ScrollArea::vertical()
+                .id_salt("current_fragment")
+                .max_height(120.0)
+                .show(ui, |ui| {
+                    ui.label(
+                        RichText::new(&doc.chunks[self.cursor].text)
+                            .size(self.session.font_size + 2.0)
+                            .color(Color32::from_rgb(15, 76, 82)),
+                    );
+                });
         });
     }
 
