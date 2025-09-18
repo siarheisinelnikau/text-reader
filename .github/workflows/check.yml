@@ -1,0 +1,26 @@
+name: Windows checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: windows-latest
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_TARGET_DIR: target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets -j 2 -- -D warnings
+      - run: cargo test --locked --all-targets -j 2
+      - shell: pwsh
+        run: ./scripts/package.ps1
+      - shell: pwsh
+        run: ./scripts/verify-artifact.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TextReader-Windows-x64
+          path: dist/*
