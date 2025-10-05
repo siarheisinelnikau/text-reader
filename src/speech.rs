@@ -205,7 +205,7 @@ mod platform {
                     Some(&format),
                     0,
                 )?;
-                sapi.voice.SetOutput(&stream, true)?;
+                sapi.voice.SetOutput(&stream, false)?;
                 for (i, chunk) in doc.chunks.iter().enumerate() {
                     if cancel.load(Ordering::Relaxed) {
                         bail!("Audio export cancelled.");
