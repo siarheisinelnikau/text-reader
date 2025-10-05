@@ -1,7 +1,12 @@
 param([string]$Path)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if (-not $Path) { $Path = Join-Path $repoRoot 'dist/TextReader-v0.1.0.exe' }
+if (-not $Path) {
+    $manifestText = Get-Content -LiteralPath (Join-Path $repoRoot 'Cargo.toml') -Raw
+    $versionMatch = [regex]::Match($manifestText, '(?m)^version\s*=\s*"([^"]+)"')
+    if (-not $versionMatch.Success) { throw 'Cannot find package version.' }
+    $Path = Join-Path $repoRoot "dist/TextReader-v$($versionMatch.Groups[1].Value).exe"
+}
 $artifactPath = (Resolve-Path -LiteralPath $Path).Path
 $bytes = [System.IO.File]::ReadAllBytes($artifactPath)
 if ($bytes.Length -lt 256 -or $bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw 'Missing DOS/PE header.' }
