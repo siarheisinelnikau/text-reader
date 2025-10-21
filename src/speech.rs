@@ -19,6 +19,8 @@ mod platform {
         core::{GUID, Interface, PCWSTR, PWSTR},
     };
 
+    const SAPI_NOT_FOUND: u32 = 0x8004503a;
+
     struct Apartment;
     impl Apartment {
         fn new() -> Result<Self> {
@@ -41,6 +43,7 @@ mod platform {
         tokens: Vec<(Voice, ISpObjectToken)>,
         default: ISpObjectToken,
         paused: bool,
+        file_output: bool,
         _apartment: Apartment,
     }
 
@@ -84,6 +87,7 @@ mod platform {
                     tokens,
                     default,
                     paused: false,
+                    file_output: false,
                     _apartment: apartment,
                 })
             }
@@ -106,19 +110,40 @@ mod platform {
                     .1
             };
             unsafe {
-                self.voice.SetVoice(token)?;
-                self.voice.SetRate(rate.clamp(-10, 10))?;
+                self.voice
+                    .SetVoice(token)
+                    .context("Cannot select the installed speech voice")?;
+                self.voice
+                    .SetRate(rate.clamp(-10, 10))
+                    .context("Cannot set speech speed")?;
             }
             Ok(())
         }
         fn speak(&mut self, text: &str) -> Result<()> {
             let text = wide(text);
             unsafe {
-                self.voice.Speak(
-                    PCWSTR(text.as_ptr()),
-                    (SPF_ASYNC.0 | SPF_IS_NOT_XML.0) as u32,
-                    None,
-                )?;
+                let flags = (SPF_ASYNC.0 | SPF_IS_NOT_XML.0) as u32;
+                let mut result = self.voice.Speak(PCWSTR(text.as_ptr()), flags, None);
+                // A missing SAPI default audio token can fail even with usable WinMM devices.
+                // Use the current Windows default mapper without changing system settings.
+                // File synthesis must never fall back to speakers.
+                if !self.file_output
+                    && result
+                        .as_ref()
+                        .is_err_and(|e| e.code().0 as u32 == SAPI_NOT_FOUND)
+                {
+                    let output: ISpMMSysAudio =
+                        CoCreateInstance(&SpMMAudioOut, None, CLSCTX_INPROC_SERVER)
+                            .context("Cannot initialize the Windows default audio renderer")?;
+                    output
+                        .SetDeviceId(u32::MAX)
+                        .context("Cannot select the Windows default playback device")?;
+                    self.voice
+                        .SetOutput(&output, true)
+                        .context("Cannot attach the Windows default audio renderer")?;
+                    result = self.voice.Speak(PCWSTR(text.as_ptr()), flags, None);
+                }
+                result.context("Cannot start speech; check that a Windows playback device and the selected voice are available")?;
             }
             Ok(())
         }
@@ -150,11 +175,13 @@ mod platform {
         }
         fn stop(&mut self) -> Result<()> {
             unsafe {
-                self.voice.Speak(
-                    PCWSTR::null(),
-                    (SPF_ASYNC.0 | SPF_PURGEBEFORESPEAK.0) as u32,
-                    None,
-                )?;
+                self.voice
+                    .Speak(
+                        PCWSTR::null(),
+                        (SPF_ASYNC.0 | SPF_PURGEBEFORESPEAK.0) as u32,
+                        None,
+                    )
+                    .context("Cannot stop speech on the current output")?;
                 if self.paused {
                     self.voice.Resume()?;
                     self.paused = false;
@@ -176,6 +203,8 @@ mod platform {
             !path.exists(),
             "Export destination already exists. Choose a new filename to preserve that file."
         );
+        // Keep COM initialized after the rendering voice is released and until the stream closes.
+        let _export_apartment = Apartment::new()?;
         let mut sapi = Sapi::new()?;
         sapi.configure(voice, rate)?;
         let part = path.with_extension(format!("{}.partial.wav", std::process::id()));
@@ -198,14 +227,19 @@ mod platform {
                     cbSize: 0,
                 };
                 let wave = GUID::from_u128(0xc31adbae_527f_4ff5_a230_f62bb61ff70c);
-                stream.BindToFile(
-                    PCWSTR(filename.as_ptr()),
-                    SPFM_CREATE_ALWAYS,
-                    Some(&wave),
-                    Some(&format),
-                    0,
-                )?;
-                sapi.voice.SetOutput(&stream, false)?;
+                stream
+                    .BindToFile(
+                        PCWSTR(filename.as_ptr()),
+                        SPFM_CREATE_ALWAYS,
+                        Some(&wave),
+                        Some(&format),
+                        0,
+                    )
+                    .context("Cannot open the WAV output stream")?;
+                sapi.voice
+                    .SetOutput(&stream, false)
+                    .context("Cannot route speech to the WAV stream")?;
+                sapi.file_output = true;
                 for (i, chunk) in doc.chunks.iter().enumerate() {
                     if cancel.load(Ordering::Relaxed) {
                         bail!("Audio export cancelled.");
@@ -225,9 +259,10 @@ mod platform {
                     }
                     progress((i + 1) as f32 / doc.chunks.len() as f32);
                 }
-                sapi.voice
-                    .SetOutput(None::<&windows::core::IUnknown>, true)?;
-                stream.Close()?;
+                // Releasing the voice detaches its stream without opening a playback device.
+                // Resetting SetOutput(None) here incorrectly made file export depend on speakers.
+                drop(sapi);
+                stream.Close().context("Cannot finalize the WAV header")?;
             }
             ensure!(
                 !path.exists(),
@@ -246,7 +281,6 @@ mod platform {
             }
             Ok(())
         })();
-        drop(sapi);
         let _ = std::fs::remove_file(&part);
         result
     }
