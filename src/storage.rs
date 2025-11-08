@@ -40,6 +40,13 @@ impl Default for Session {
 }
 
 pub fn data_dir() -> PathBuf {
+    if let Some(portable) = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.join("TextReader.data")))
+        && portable.is_dir()
+    {
+        return portable;
+    }
     std::env::var_os("LOCALAPPDATA")
         .map(PathBuf::from)
         .unwrap_or_else(std::env::temp_dir)
