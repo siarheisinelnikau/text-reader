@@ -2,13 +2,19 @@
 
 #[cfg(windows)]
 mod app;
+#[cfg(windows)]
+mod desktop;
+#[cfg(windows)]
+mod diagnostics;
+#[cfg(windows)]
+mod theme;
 
 #[cfg(windows)]
-fn main() -> eframe::Result {
+fn main() -> anyhow::Result<()> {
+    diagnostics::initialize();
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).is_some_and(|s| s == "--apply-update") {
         if let Err(error) = text_reader::updater::apply_update(&args) {
-            // Keep failures for the next launch; the parent may still be running on timeout.
             let dir = text_reader::storage::data_dir();
             let _ = std::fs::create_dir_all(&dir);
             let _ = std::fs::write(
@@ -18,20 +24,40 @@ fn main() -> eframe::Result {
         }
         return Ok(());
     }
-    let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_inner_size([1120.0, 760.0])
-            .with_min_inner_size([820.0, 560.0]),
-        ..Default::default()
+    let result = if args.get(1).is_some_and(|s| s == "--screenshot") {
+        anyhow::ensure!(
+            args.len() >= 3,
+            "Usage: --screenshot ABSOLUTE.png [--screen reader|settings|empty] [--width 1180] [--height 820] [--scale 1]"
+        );
+        let mut screen = "reader";
+        let mut width = 1180;
+        let mut height = 820;
+        let mut scale = 1.0;
+        let mut index = 3;
+        while index < args.len() {
+            anyhow::ensure!(index + 1 < args.len(), "Missing option value");
+            match args[index].as_str() {
+                "--screen" => screen = &args[index + 1],
+                "--width" => width = args[index + 1].parse()?,
+                "--height" => height = args[index + 1].parse()?,
+                "--scale" => scale = args[index + 1].parse()?,
+                value => anyhow::bail!("Unknown capture option: {value}"),
+            }
+            index += 2;
+        }
+        desktop::capture(std::path::Path::new(&args[2]), screen, width, height, scale)
+    } else if args.get(1).is_some_and(|s| s == "--diagnose") {
+        anyhow::ensure!(args.len() == 3, "Usage: --diagnose ABSOLUTE.json");
+        desktop::run(Some(args[2].clone().into()))
+    } else {
+        anyhow::ensure!(args.len() == 1, "Unknown command-line options");
+        desktop::run(None)
     };
-    eframe::run_native(
-        "TextReader",
-        options,
-        Box::new(|cc| Ok(Box::new(app::App::new(cc)))),
-    )
+    diagnostics::event(&format!("application returned: {result:?}"));
+    result
 }
 
 #[cfg(not(windows))]
 fn main() {
-    eprintln!("TextReader's speech adapter and desktop application currently require Windows.");
+    eprintln!("The TextReader desktop application requires Windows.");
 }
