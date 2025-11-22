@@ -1,4 +1,3 @@
-use egui;
 use std::{
     path::PathBuf,
     sync::{
@@ -35,6 +34,7 @@ enum NetCommand {
 }
 enum Installation {
     None,
+    Downloading,
     Downloaded(PathBuf),
     Preparing,
     Ready,
@@ -451,6 +451,7 @@ impl App {
                                     .map_or(0, |p| p.cursor)
                                     .min(d.chunks.len() - 1);
                                 self.message = format!("Restored {}", d.title);
+                                self.scroll_to_cursor = true;
                             }
                         }
                         Err(e) => {
@@ -557,6 +558,7 @@ impl App {
                         }
                         Err(e) => {
                             self.net_busy = false;
+                            self.installation = Installation::None;
                             self.message = e;
                         }
                     }
@@ -592,7 +594,9 @@ impl App {
                     }
                 }
                 Installation::Preparing => {}
-                Installation::None | Installation::Ready => self.exit_ready = true,
+                Installation::None | Installation::Ready | Installation::Downloading => {
+                    self.exit_ready = true
+                }
             }
         }
     }

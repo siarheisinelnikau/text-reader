@@ -15,7 +15,12 @@ fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).is_some_and(|s| s == "--apply-update") {
         if let Err(error) = text_reader::updater::apply_update(&args) {
-            let dir = text_reader::storage::data_dir();
+            let dir = args
+                .get(3)
+                .and_then(|target| std::path::Path::new(target).parent())
+                .map(|parent| parent.join("TextReader.data"))
+                .filter(|path| path.is_dir())
+                .unwrap_or_else(text_reader::storage::data_dir);
             let _ = std::fs::create_dir_all(&dir);
             let _ = std::fs::write(
                 dir.join("update-error.txt"),

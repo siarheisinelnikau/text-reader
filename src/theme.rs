@@ -8,8 +8,10 @@ pub const CANVAS: Color32 = Color32::from_rgb(246, 247, 249);
 pub const LINE: Color32 = Color32::from_rgb(226, 232, 234);
 
 pub fn apply(ctx: &egui::Context) {
-    let mut style = egui::Style::default();
-    style.visuals = egui::Visuals::light();
+    let mut style = egui::Style {
+        visuals: egui::Visuals::light(),
+        ..Default::default()
+    };
     style.visuals.override_text_color = Some(INK);
     style.visuals.panel_fill = Color32::WHITE;
     style.visuals.window_fill = Color32::WHITE;

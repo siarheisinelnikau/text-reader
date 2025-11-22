@@ -74,7 +74,12 @@ impl App {
                         if self.session.document.is_some()
                             && ui
                                 .add_enabled(
-                                    !self.file_busy && !self.net_busy,
+                                    !self.file_busy
+                                        && !self.closing
+                                        && !matches!(
+                                            self.installation,
+                                            Installation::Downloading | Installation::Preparing
+                                        ),
                                     egui::Button::new("Export audio"),
                                 )
                                 .clicked()
@@ -528,7 +533,7 @@ impl App {
 
     fn dialogs(&mut self, ctx: &egui::Context) {
         let mut open = self.settings;
-        egui::Window::new("Settings").open(&mut open).resizable(false).default_width(490.0).default_pos(egui::pos2(((ctx.content_rect().width()-550.0)/2.0).max(16.0),40.0)).default_height(650.0).frame(egui::Frame::window(&ctx.style()).inner_margin(24)).show(ctx,|ui| {
+        egui::Window::new("Settings").open(&mut open).collapsible(false).resizable(false).default_width(490.0).default_pos(egui::pos2(((ctx.content_rect().width()-550.0)/2.0).max(16.0),40.0)).default_height(650.0).frame(egui::Frame::window(&ctx.style()).inner_margin(24)).show(ctx,|ui| {
             egui::ScrollArea::vertical().max_height((ctx.content_rect().height()-150.0).clamp(280.0,590.0)).show(ui,|ui| {
                 ui.label(RichText::new("Choose a voice and a comfortable text size.").color(MUTED));ui.add_space(12.0);
                 caption(ui,"LISTENING");ui.add_space(4.0);
@@ -552,7 +557,7 @@ impl App {
                 ui.label(RichText::new(&self.update_message).size(12.0).color(MUTED));
                 if let Some(update)=self.available.clone()
                     && ui.add_enabled(!self.net_busy&&!self.file_busy&&!self.save_failed&&!self.load_failed&&!self.closing,primary("Download and install")).clicked()
-                    && self.network.try_send(NetCommand::Install(update)).is_ok(){self.net_busy=true;self.message="Downloading your update. TextReader will save your place and restart.".into();}
+                    && self.network.try_send(NetCommand::Install(update)).is_ok(){self.net_busy=true;self.installation=Installation::Downloading;self.message="Downloading your update. TextReader will save your place and restart.".into();}
                 ui.add_space(14.0);ui.separator();ui.add_space(14.0);caption(ui,"YOUR DATA");
                 ui.label(RichText::new("Your last document, bookmarks and preferences stay on this PC. Original documents are never changed.").color(MUTED).size(13.0));
                 ui.add(egui::Label::new(RichText::new(storage::data_dir().display().to_string()).monospace().size(11.0).color(MUTED)).wrap());
