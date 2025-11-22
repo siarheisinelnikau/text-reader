@@ -18,7 +18,7 @@ use winit::{
 
 #[derive(Debug)]
 enum Wake {
-    Repaint(Duration),
+    Repaint { when: Instant, pass: u64 },
     Access(accesskit_winit::Event),
 }
 impl From<accesskit_winit::Event> for Wake {
@@ -166,6 +166,8 @@ struct Desktop {
     next: Option<Instant>,
     diagnostic: Option<Diagnostic>,
     error: Option<anyhow::Error>,
+    causes: std::collections::BTreeMap<String, u64>,
+    window_events: std::collections::BTreeMap<String, u64>,
 }
 impl Desktop {
     fn visible(&self) -> bool {
@@ -221,6 +223,11 @@ impl Desktop {
                 app.draw(ctx);
                 app.tick(ctx, true);
             });
+            if self.diagnostic.is_some() {
+                for cause in self.ctx.repaint_causes() {
+                    *self.causes.entry(cause.to_string()).or_default() += 1;
+                }
+            }
             self.counts.layouts += 1;
             self.counts.layout_ms += start.elapsed().as_secs_f64() * 1000.0;
             state.handle_platform_output(&window, output.platform_output.clone());
@@ -281,6 +288,7 @@ impl Desktop {
     }
 
     fn diagnostic_step(&mut self, event_loop: &ActiveEventLoop) -> Result<()> {
+        let observed_visible = self.visible();
         let Some(run) = &mut self.diagnostic else {
             return Ok(());
         };
@@ -295,16 +303,19 @@ impl Desktop {
                 2 => "minimized_idle",
                 _ => "restored_idle",
             };
-            let cpu = cpu_seconds() - run.cpu_start;
+            let cpu = cpu_seconds()? - run.cpu_start;
+            let seconds = Instant::now()
+                .saturating_duration_since(run.deadline - Duration::from_secs(5))
+                .as_secs_f64();
             let layouts = current.layouts - start.layouts;
             let rasters = current.rasters - start.rasters;
-            run.samples.push(serde_json::json!({"state":label,"seconds":5,"cpu_seconds":cpu,"percent_of_one_core":cpu*20.0,"layouts":layouts,"rasters":rasters,"presents":current.presents-start.presents,"retained_blits":current.retained_blits-start.retained_blits,"layout_ms":current.layout_ms-start.layout_ms,"raster_ms":current.raster_ms-start.raster_ms,"present_ms":current.present_ms-start.present_ms,"settled":layouts==0&&rasters==0}));
+            run.samples.push(serde_json::json!({"state":label,"observed_visible":observed_visible,"state_valid":observed_visible==(run.phase!=2),"seconds":seconds,"cpu_seconds":cpu,"percent_of_one_core":cpu/seconds*100.0,"layouts":layouts,"rasters":rasters,"presents":current.presents-start.presents,"retained_blits":current.retained_blits-start.retained_blits,"layout_ms":current.layout_ms-start.layout_ms,"raster_ms":current.raster_ms-start.raster_ms,"present_ms":current.present_ms-start.present_ms,"settled":layouts==0&&rasters==0}));
         }
         run.phase += 1;
         match run.phase {
             1 => {
                 run.start = self.counts.clone();
-                run.cpu_start = cpu_seconds();
+                run.cpu_start = cpu_seconds()?;
                 run.deadline = Instant::now() + Duration::from_secs(5);
             }
             2 => {
@@ -312,7 +323,7 @@ impl Desktop {
                 self.occluded = true;
                 self.next = None;
                 run.start = self.counts.clone();
-                run.cpu_start = cpu_seconds();
+                run.cpu_start = cpu_seconds()?;
                 run.deadline = Instant::now() + Duration::from_secs(5);
             }
             3 => {
@@ -324,11 +335,11 @@ impl Desktop {
             }
             4 => {
                 run.start = self.counts.clone();
-                run.cpu_start = cpu_seconds();
+                run.cpu_start = cpu_seconds()?;
                 run.deadline = Instant::now() + Duration::from_secs(5);
             }
             _ => {
-                let report = serde_json::json!({"backend":"egui CPU rasterizer -> retained BGRA bitmap -> softbuffer Windows GDI","process_id":std::process::id(),"profile":"optimized release required","scenario":"isolated populated fixture; no worker/network/audio tasks; no input automation","samples":run.samples,"totals":self.counts,"scope":"idle/minimized/restore scheduling and CPU only; not perceived interaction smoothness or GPU telemetry"});
+                let report = serde_json::json!({"backend":"egui CPU rasterizer -> retained BGRA bitmap -> softbuffer Windows GDI","process_id":std::process::id(),"profile":"optimized release required","scenario":"isolated populated fixture; no worker/network/audio tasks; no input automation","samples":run.samples,"totals":self.counts,"repaint_causes":self.causes,"window_events":self.window_events,"scope":"idle/minimized/restore scheduling and CPU only; not perceived interaction smoothness or GPU telemetry"});
                 if let Some(parent) = run.path.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
@@ -340,7 +351,7 @@ impl Desktop {
     }
 }
 
-fn cpu_seconds() -> f64 {
+fn cpu_seconds() -> Result<f64> {
     use windows::Win32::{
         Foundation::FILETIME,
         System::Threading::{GetCurrentProcess, GetProcessTimes},
@@ -350,19 +361,16 @@ fn cpu_seconds() -> f64 {
         let mut exit = FILETIME::default();
         let mut kernel = FILETIME::default();
         let mut user = FILETIME::default();
-        if GetProcessTimes(
+        GetProcessTimes(
             GetCurrentProcess(),
             &mut creation,
             &mut exit,
             &mut kernel,
             &mut user,
         )
-        .is_err()
-        {
-            return 0.0;
-        }
+        .context("Cannot measure this process CPU time")?;
         let ticks = |t: FILETIME| ((t.dwHighDateTime as u64) << 32) | t.dwLowDateTime as u64;
-        (ticks(kernel) + ticks(user)) as f64 / 10_000_000.0
+        Ok((ticks(kernel) + ticks(user)) as f64 / 10_000_000.0)
     }
 }
 
@@ -376,6 +384,7 @@ impl ApplicationHandler<Wake> for Desktop {
                 event_loop.create_window(
                     Window::default_attributes()
                         .with_title("TextReader")
+                        .with_visible(false)
                         .with_inner_size(winit::dpi::LogicalSize::new(1180.0, 820.0))
                         .with_min_inner_size(winit::dpi::LogicalSize::new(900.0, 620.0)),
                 )?,
@@ -402,6 +411,7 @@ impl ApplicationHandler<Wake> for Desktop {
             self.app = Some(app);
             self.surface = Some(surface);
             self.display = Some(display);
+            window.set_visible(true);
             crate::diagnostics::event(
                 "backend=CPU software rasterizer; presentation=softbuffer Win32 GDI; scheduling=Wait/WaitUntil",
             );
@@ -416,6 +426,17 @@ impl ApplicationHandler<Wake> for Desktop {
         let Some(window) = self.window.clone().filter(|w| w.id() == id) else {
             return;
         };
+        if self.diagnostic.is_some() {
+            let name = match &event {
+                WindowEvent::CursorMoved { .. } => "cursor_moved",
+                WindowEvent::RedrawRequested => "redraw",
+                WindowEvent::Resized(_) => "resize",
+                WindowEvent::Focused(_) => "focus",
+                WindowEvent::Occluded(_) => "occlusion",
+                _ => "other",
+            };
+            *self.window_events.entry(name.into()).or_default() += 1;
+        }
         let response = self
             .state
             .as_mut()
@@ -468,10 +489,13 @@ impl ApplicationHandler<Wake> for Desktop {
             }
         }
         match event {
-            Wake::Repaint(delay) => {
-                self.dirty = true;
-                if visible {
-                    self.queue(delay);
+            Wake::Repaint { when, pass } => {
+                let current = self.ctx.cumulative_pass_nr();
+                if current == pass || current == pass + 1 {
+                    self.dirty = true;
+                    if visible {
+                        self.next = Some(self.next.map_or(when, |old| old.min(when)));
+                    }
                 }
             }
             Wake::Access(event) => {
@@ -535,7 +559,12 @@ pub fn run(diagnostic: Option<PathBuf>) -> Result<()> {
     let ctx = egui::Context::default();
     let repaint_proxy = proxy.clone();
     ctx.set_request_repaint_callback(move |info| {
-        let _ = repaint_proxy.send_event(Wake::Repaint(info.delay));
+        if let Some(when) = Instant::now().checked_add(info.delay) {
+            let _ = repaint_proxy.send_event(Wake::Repaint {
+                when,
+                pass: info.current_cumulative_pass_nr,
+            });
+        }
     });
     let mut desktop = Desktop {
         ctx,
@@ -559,6 +588,8 @@ pub fn run(diagnostic: Option<PathBuf>) -> Result<()> {
             samples: vec![],
         }),
         error: None,
+        causes: Default::default(),
+        window_events: Default::default(),
     };
     event_loop
         .run_app(&mut desktop)

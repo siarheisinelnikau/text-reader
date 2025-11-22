@@ -47,6 +47,7 @@ while ([BitConverter]::ToUInt32($bytes, $descriptor + 12) -ne 0) {
     $descriptor += 20
 }
 if ($imports | Where-Object { $_ -match '^(VCRUNTIME|MSVCP|api-ms-win-crt)' }) { throw 'Unexpected dynamically imported MSVC CRT.' }
+if ($imports | Where-Object { $_ -match '^(opengl32|d3d11|d3d12|dxgi|vulkan-1)\.dll$' }) { throw 'Unexpected GPU renderer import in the CPU/GDI build.' }
 $hash = (Get-FileHash -LiteralPath $artifactPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $sumsPath = Join-Path (Split-Path -Parent $artifactPath) 'SHA256SUMS.txt'
 $expectedLine = "$hash  $(Split-Path -Leaf $artifactPath)"

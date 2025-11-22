@@ -20,7 +20,13 @@ jobs:
         run: ./scripts/package.ps1
       - shell: pwsh
         run: ./scripts/verify-artifact.ps1
+      - shell: pwsh
+        run: |
+          ./scripts/capture.ps1 -Output .test-output/reader.png -Screen reader
+          ./scripts/capture.ps1 -Output .test-output/settings.png -Screen settings
       - uses: actions/upload-artifact@v4
         with:
           name: TextReader-Windows-x64
-          path: dist/*
+          path: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
