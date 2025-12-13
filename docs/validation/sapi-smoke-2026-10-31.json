@@ -1,0 +1,40 @@
+{
+  "cancellation": "passed",
+  "fast": {
+    "bits_per_sample": 16,
+    "bytes": 182986,
+    "channels": 1,
+    "duration_seconds": 4.148299319727891,
+    "file": "fast.wav",
+    "nonzero_samples": 66025,
+    "peak": 20601,
+    "rms": 2706.286885563865,
+    "sample_rate": 22050
+  },
+  "gui_and_screenshots": "not exercised by this backend-only check",
+  "normal": {
+    "bits_per_sample": 16,
+    "bytes": 264356,
+    "channels": 1,
+    "duration_seconds": 5.993424036281179,
+    "file": "normal.wav",
+    "nonzero_samples": 95779,
+    "peak": 22460,
+    "rms": 2832.970106436756,
+    "sample_rate": 22050
+  },
+  "physical_audibility": "not observed",
+  "playback_error": null,
+  "playback_passed": true,
+  "playback_requested": true,
+  "preservation": "passed",
+  "selected_voice": "Microsoft Zira Desktop - English (United States)",
+  "visible_winmm_playback_devices": 5,
+  "visited_fragments": [
+    0,
+    1
+  ],
+  "voices": [
+    "Microsoft Zira Desktop - English (United States)"
+  ]
+}

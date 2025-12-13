@@ -1,4 +1,6 @@
-# Verification record — 2026-10-31
+# Initial code-only verification record — 2026-10-31
+
+This records the original unattended phase. The subsequent authorized native SAPI checks, fixes and subsequent CPU/GDI visual/performance review are recorded in [INTERACTIVE-VALIDATION.md](INTERACTIVE-VALIDATION.md). Statements below about untested audio and the initial artifact hash apply to that original phase.
 
 All work and commands were scoped to `E:\work\github\text-reader`. The application, speech adapter and updater helper were not launched. No GUI, audio output, microphone, screen capture, real user document, service, driver, credential or remote Git operation was used. Tests operated on synthetic fixtures only. The task reference and public API documentation were read without browser UI automation.
 
