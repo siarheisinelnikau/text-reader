@@ -59,6 +59,8 @@ cargo test --locked --all-targets -j 2
 
 Cargo uses at most two jobs and local `target/`. Packaging generates `dist/TextReader-v0.1.0.exe` and `SHA256SUMS.txt`, statically linking the application's MSVC CRT. Windows system DLLs remain runtime requirements. Ordinary tests use synthetic fixtures and a silent adapter; they do not initialize SAPI, play audio, open windows or contact the network. CI builds and checks artifacts without publishing.
 
+The original book icon is embedded in the EXE for Explorer/shortcuts and assigned explicitly to the native window and taskbar. The Windows SDK resource compiler embeds the committed multi-resolution ICO during Cargo builds; no separate icon file is needed beside the release EXE. `scripts/verify-artifact.ps1` checks the actual icon resources and sizes in the built PE file. Editable assets are in `assets/`; `scripts/generate-icon.py` needs Pillow only when regenerating them.
+
 Static review without Computer Use: `scripts/capture.ps1 -Output ABSOLUTE.png -Screen reader|settings|empty`. It launches the real EXE in an isolated, bounded offscreen render-save-exit mode; no workers, user profile, audio or update requests are started. Width/height are logical pixels and `-Scale` controls physical output. Screenshots verify the client UI, not native chrome, dialogs or input traversal.
 
 Opt-in backend check: `cargo run --locked --example sapi_smoke -j 2` renders synthetic speech into `.test-output/`. Add `-- --playback` only when sound is authorized to test real SAPI transport as well. `scripts/diagnose.ps1 -Output ABSOLUTE.json` runs a bounded isolated visible/minimized/restored scheduling test and exits; it is separate from static capture.

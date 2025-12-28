@@ -9,6 +9,7 @@ An independent local document listener for Windows x64, using installed desktop 
 - Restore the last imported text and saved reading position; retain labeled bookmarks and preferences locally without modifying source documents.
 - Export the entire document as PCM WAV with progress and cancellation, using the selected installed voice.
 - Settings with installed version, manual update checking, an enabled-by-default persistent startup-check toggle and user-initiated verified portable installation for future stable releases.
+- Original multi-resolution book icon embedded in the standalone EXE and assigned to the native window and taskbar.
 
 ## Improved
 
@@ -27,6 +28,6 @@ An independent local document listener for Windows x64, using installed desktop 
 
 ## Requirements and known limits
 
-The intended target is Windows 10/11 x64 with a classic SAPI voice and an OpenGL-capable driver. The standalone asset is `TextReader-v0.1.0.exe`; the release must also include `SHA256SUMS.txt`. No installed Rust toolchain, external model, cloud account or AI API is needed to use the app.
+The intended target is Windows 10/11 x64 with a classic SAPI voice; the interface uses CPU rasterization and Windows GDI. The standalone asset is `TextReader-v0.1.0.exe`; the release must also include `SHA256SUMS.txt`. No installed Rust toolchain, external model, cloud account or AI API is needed to use the app.
 
-PDF/OCR, MP3, DRM, exact word highlighting, complex document layout and OneCore-only voices are not supported. List previews are compact; the active fragment appears in full. Installation requires a writable portable folder. Multiple simultaneous instances are not coordinated. Native SAPI transport and non-silent PCM WAV synthesis passed with Microsoft Zira Desktop. Physical audibility, GUI behavior, clean-machine portability and a live update round-trip still need manual validation. Real Reader and Settings client-area PNGs were generated and inspected without Computer Use. The final idle/minimized/restore diagnostic passed; subjective interaction smoothness and native dialog traversal remain unverified.
+PDF/OCR, MP3, DRM, exact word highlighting, complex document layout and OneCore-only voices are not supported. Passages wrap on a paginated reading surface. Installation requires a writable portable folder. Multiple simultaneous instances are not coordinated. Native SAPI transport and non-silent PCM WAV synthesis passed with Microsoft Zira Desktop. Physical audibility, GUI behavior, clean-machine portability and a live update round-trip still need manual validation. Real Reader and Settings client-area PNGs were generated and inspected without Computer Use. The final idle/minimized/restore diagnostic passed; subjective interaction smoothness and native dialog traversal remain unverified.

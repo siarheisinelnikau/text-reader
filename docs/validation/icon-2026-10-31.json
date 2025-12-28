@@ -1,0 +1,36 @@
+{
+  "executable": "dist/TextReader-v0.1.0.exe",
+  "sha256": "9546310e52bf99bd0a7e1528c5467aaf6a37f644563d396de62219f01874847b",
+  "bytes": 8425472,
+  "resource_compiler": "Existing Windows SDK rc.exe selected by build.rs; no new Cargo dependencies",
+  "resources": {
+    "RT_GROUP_ICON": 1,
+    "RT_ICON_images": 9,
+    "sizes_px": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ],
+    "all_payloads_match_committed_ico": true
+  },
+  "native_window": "PNG decoded once during window creation; assigned to window and taskbar attributes",
+  "asset_sha256": {
+    "assets/icon.svg": "30cfb0cbf2ca709ad065c75f4adc093543306019c8810fdd79afe2a6c41c42cc",
+    "assets/icon.png": "f92c007b7c23cd4e50a37d08c22326c8e018b0edcf5f684aebaa9c5d0a4a4e8f",
+    "assets/text-reader.ico": "349036aafd20554aee52bde91ada649cd7db4910427f38d16d2ed4c325c3cc3b"
+  },
+  "verification": [
+    "cargo fmt --all -- --check",
+    "cargo clippy --offline --locked --all-targets -j 2 -- -D warnings",
+    "cargo test --offline --locked --all-targets -j 2: 14 passed",
+    "scripts/package.ps1 -Offline",
+    "scripts/verify-artifact.ps1: PE, icon sizes/payload hashes and package SHA-256 passed"
+  ],
+  "runtime_scope": "Bounded native launches completed; no Computer Use. Initial visible samples had pointer input and are not clean idle evidence. Minimized/restored samples were quiet. Explorer cache and native chrome appearance were not visually inspected."
+}
