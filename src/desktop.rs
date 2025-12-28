@@ -9,12 +9,22 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+use winit::platform::windows::WindowAttributesExtWindows;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy, OwnedDisplayHandle},
     window::{Window, WindowId},
 };
+
+fn application_icon() -> Result<winit::window::Icon> {
+    let image = image::load_from_memory(include_bytes!("../assets/icon.png"))
+        .context("Cannot decode the embedded application icon")?
+        .into_rgba8();
+    let (width, height) = image.dimensions();
+    winit::window::Icon::from_rgba(image.into_raw(), width, height)
+        .context("Cannot initialize the Windows application icon")
+}
 
 #[derive(Debug)]
 enum Wake {
@@ -380,10 +390,13 @@ impl ApplicationHandler<Wake> for Desktop {
             return;
         }
         let result = (|| -> Result<()> {
+            let icon = application_icon()?;
             let window = Arc::new(
                 event_loop.create_window(
                     Window::default_attributes()
                         .with_title("TextReader")
+                        .with_window_icon(Some(icon.clone()))
+                        .with_taskbar_icon(Some(icon))
                         .with_visible(false)
                         .with_inner_size(winit::dpi::LogicalSize::new(1180.0, 820.0))
                         .with_min_inner_size(winit::dpi::LogicalSize::new(900.0, 620.0)),

@@ -1,8 +1,8 @@
 {
   "version": "0.1.0",
   "executable": "dist/TextReader-v0.1.0.exe",
-  "bytes": 8249856,
-  "sha256": "fa24a87ca0e413edf8dfc8fec5fd5ef8af8e5178d86556eca3e43a735bcccf8c",
+  "bytes": 8425472,
+  "sha256": "9546310e52bf99bd0a7e1528c5467aaf6a37f644563d396de62219f01874847b",
   "backend": "CPU egui_software_backend 0.0.2 -> retained BGRA -> softbuffer 0.4.8 Windows GDI",
   "captures": [
     {
@@ -21,7 +21,8 @@
       "native_window_created": false,
       "workers_network_audio_started": false,
       "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
-      "sha256": "5b838051cd77bf324ef6ff4d084c73e6fe9a67c7f42dc3193130603b3c5a2bc2"
+      "sha256": "5b838051cd77bf324ef6ff4d084c73e6fe9a67c7f42dc3193130603b3c5a2bc2",
+      "capture_executable_sha256": "fa24a87ca0e413edf8dfc8fec5fd5ef8af8e5178d86556eca3e43a735bcccf8c"
     },
     {
       "file": "docs/images/settings.png",
@@ -39,7 +40,8 @@
       "native_window_created": false,
       "workers_network_audio_started": false,
       "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
-      "sha256": "4fe736687ee7afd417c5fae6dc3467ae91d126c534b3685ff8bfc10174e14668"
+      "sha256": "4fe736687ee7afd417c5fae6dc3467ae91d126c534b3685ff8bfc10174e14668",
+      "capture_executable_sha256": "fa24a87ca0e413edf8dfc8fec5fd5ef8af8e5178d86556eca3e43a735bcccf8c"
     },
     {
       "file": "docs/images/empty.png",
@@ -57,7 +59,26 @@
       "native_window_created": false,
       "workers_network_audio_started": false,
       "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
-      "sha256": "ea18e802f572dcf45a4bdd5dcc54c4f40aa8d8a466fed266d43695c8f4b7e21e"
+      "sha256": "ea18e802f572dcf45a4bdd5dcc54c4f40aa8d8a466fed266d43695c8f4b7e21e",
+      "capture_executable_sha256": "fa24a87ca0e413edf8dfc8fec5fd5ef8af8e5178d86556eca3e43a735bcccf8c"
     }
-  ]
+  ],
+  "native_icon": {
+    "group_id": 1,
+    "image_sizes_px": [
+      16,
+      20,
+      24,
+      32,
+      40,
+      48,
+      64,
+      128,
+      256
+    ],
+    "embedded_payloads_verified_against": "assets/text-reader.ico",
+    "window_and_taskbar": "explicit winit icon attributes",
+    "report": "docs/validation/icon-2026-10-31.json"
+  },
+  "capture_note": "Existing client-area captures predate the native-icon patch and remain accurate; no client layout, typography or palette changed."
 }
