@@ -9,6 +9,7 @@ fn primary(text: &str) -> egui::Button<'_> {
         .fill(ACCENT)
         .min_size(vec2(106.0, 40.0))
 }
+
 fn caption(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).size(11.0).strong().color(MUTED));
 }
@@ -28,7 +29,19 @@ impl App {
     }
 
     pub fn draw(&mut self, ctx: &egui::Context) {
-        if !ctx.wants_keyboard_input()
+        if (self.settings || self.paste_open)
+            && !egui::Popup::is_any_open(ctx)
+            && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+        {
+            if self.paste_open {
+                self.paste_open = false;
+            } else {
+                self.settings = false;
+            }
+        }
+        if !self.settings
+            && !self.paste_open
+            && !ctx.wants_keyboard_input()
             && self.session.document.is_some()
             && self.voice_ready
             && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space))
@@ -533,72 +546,192 @@ impl App {
 
     fn dialogs(&mut self, ctx: &egui::Context) {
         let mut open = self.settings;
-        egui::Window::new("Settings").open(&mut open).collapsible(false).resizable(false).default_width(490.0).default_pos(egui::pos2(((ctx.content_rect().width()-550.0)/2.0).max(16.0),40.0)).default_height(650.0).frame(egui::Frame::window(&ctx.style()).inner_margin(24)).show(ctx,|ui| {
-            egui::ScrollArea::vertical().max_height((ctx.content_rect().height()-150.0).clamp(280.0,590.0)).show(ui,|ui| {
-                ui.label(RichText::new("Choose a voice and a comfortable text size.").color(MUTED));ui.add_space(12.0);
-                caption(ui,"LISTENING");ui.add_space(4.0);
-                ui.label("Voice");
-                let old=self.session.voice.clone();
-                let name=self.voices.iter().find(|v|v.id==self.session.voice).map_or(if self.session.voice.is_empty(){"System default"}else{"Saved voice unavailable"},|v|v.name.as_str());
-                egui::ComboBox::from_id_salt("voice").width(400.0).selected_text(name).show_ui(ui,|ui| {
-                    ui.selectable_value(&mut self.session.voice,String::new(),"System default");
-                    for voice in &self.voices {ui.selectable_value(&mut self.session.voice,voice.id.clone(),&voice.name);}
+        egui::Window::new("Settings")
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .default_width(526.0)
+            .default_height((ctx.content_rect().height() - 100.0).max(300.0))
+            .default_pos(egui::pos2(
+                ((ctx.content_rect().width() - 550.0) / 2.0).max(16.0),
+                40.0,
+            ))
+            // Keep egui's compact title-bar margins: large vertical margins move
+            // its close button underneath the title's double-click hit region.
+            .frame(egui::Frame::window(&ctx.style()))
+            .show(ctx, |ui| {
+                egui::Frame::new().inner_margin(18).show(ui, |ui| {
+                    egui::ScrollArea::vertical()
+                        .max_height((ctx.content_rect().height() - 240.0).clamp(180.0, 590.0))
+                        .show(ui, |ui| self.settings_contents(ui));
+                    ui.add_space(14.0);
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui
+                                .add(primary("Done"))
+                                .on_hover_text("Close settings (Esc)")
+                                .clicked()
+                            {
+                                ui.close_kind(egui::UiKind::Window);
+                            }
+                        });
+                    });
                 });
-                ui.label(RichText::new("Uses voices installed on this PC.").size(12.0).color(MUTED));
-                let rate=ui.add(egui::Slider::new(&mut self.session.rate,-10..=10).text("Reading speed"));
-                if old!=self.session.voice || rate.changed(){self.stop();self.mark_dirty();}
-                if ui.add(egui::Slider::new(&mut self.session.font_size,14.0..=32.0).text("Text size")).changed(){self.mark_dirty();}
-                ui.add_space(14.0);ui.separator();ui.add_space(14.0);caption(ui,"UPDATES");
-                ui.horizontal(|ui| {
-                    ui.label(concat!("TextReader ",env!("CARGO_PKG_VERSION")));
-                    if ui.add_enabled(!self.net_busy,egui::Button::new("Check for updates")).clicked(){self.check_updates(false);}
-                });
-                if ui.checkbox(&mut self.session.startup_updates,"Check for updates on startup").changed(){self.mark_dirty();}
-                ui.label(RichText::new(&self.update_message).size(12.0).color(MUTED));
-                if let Some(update)=self.available.clone()
-                    && ui.add_enabled(!self.net_busy&&!self.file_busy&&!self.save_failed&&!self.load_failed&&!self.closing,primary("Download and install")).clicked()
-                    && self.network.try_send(NetCommand::Install(update)).is_ok(){self.net_busy=true;self.installation=Installation::Downloading;self.message="Downloading your update. TextReader will save your place and restart.".into();}
-                ui.add_space(14.0);ui.separator();ui.add_space(14.0);caption(ui,"YOUR DATA");
-                ui.label(RichText::new("Your last document, bookmarks and preferences stay on this PC. Original documents are never changed.").color(MUTED).size(13.0));
-                ui.add(egui::Label::new(RichText::new(storage::data_dir().display().to_string()).monospace().size(11.0).color(MUTED)).wrap());
-                ui.hyperlink_to("Project and updates",updater::REPOSITORY);
             });
-        });
         self.settings = open;
         let mut open = self.paste_open;
         egui::Window::new("Paste text")
             .open(&mut open)
-            .default_width(610.0)
-            .frame(egui::Frame::window(&ctx.style()).inner_margin(24))
+            .default_width(646.0)
+            .frame(egui::Frame::window(&ctx.style()))
             .show(ctx, |ui| {
-                ui.heading("What would you like to hear?");
-                ui.label(
-                    RichText::new("Paste your text below. Blank lines separate paragraphs.")
-                        .color(MUTED),
-                );
-                egui::ScrollArea::vertical()
-                    .max_height(300.0)
-                    .show(ui, |ui| {
-                        ui.add(
-                            egui::TextEdit::multiline(&mut self.paste)
-                                .desired_width(f32::INFINITY)
-                                .desired_rows(12)
-                                .hint_text("Your next good read starts here…")
-                                .char_limit(4 * 1024 * 1024),
-                        );
+                egui::Frame::new().inner_margin(18).show(ui, |ui| {
+                    ui.heading("What would you like to hear?");
+                    ui.label(
+                        RichText::new("Paste your text below. Blank lines separate paragraphs.")
+                            .color(MUTED),
+                    );
+                    egui::ScrollArea::vertical()
+                        .max_height(300.0)
+                        .show(ui, |ui| {
+                            ui.add(
+                                egui::TextEdit::multiline(&mut self.paste)
+                                    .desired_width(f32::INFINITY)
+                                    .desired_rows(12)
+                                    .hint_text("Your next good read starts here…")
+                                    .char_limit(4 * 1024 * 1024),
+                            );
+                        });
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(!self.file_busy, primary("Read this text"))
+                            .clicked()
+                            && self
+                                .files
+                                .try_send(FileCommand::Paste(self.paste.clone()))
+                                .is_ok()
+                        {
+                            self.file_busy = true;
+                            self.paste_open = false;
+                        }
+                        if ui
+                            .button("Cancel")
+                            .on_hover_text("Close without clearing your text (Esc)")
+                            .clicked()
+                        {
+                            ui.close_kind(egui::UiKind::Window);
+                        }
                     });
-                if ui
-                    .add_enabled(!self.file_busy, primary("Read this text"))
-                    .clicked()
-                    && self
-                        .files
-                        .try_send(FileCommand::Paste(self.paste.clone()))
-                        .is_ok()
-                {
-                    self.file_busy = true;
-                    self.paste_open = false;
-                }
+                });
             });
         self.paste_open = open && self.paste_open;
     }
+
+    fn settings_contents(&mut self, ui: &mut egui::Ui) {
+        ui.label(RichText::new("Choose a voice and a comfortable text size.").color(MUTED));
+        ui.add_space(12.0);
+        caption(ui, "LISTENING");
+        ui.add_space(4.0);
+        ui.label("Voice");
+        let old = self.session.voice.clone();
+        let name = self
+            .voices
+            .iter()
+            .find(|v| v.id == self.session.voice)
+            .map_or(
+                if self.session.voice.is_empty() {
+                    "System default"
+                } else {
+                    "Saved voice unavailable"
+                },
+                |v| v.name.as_str(),
+            );
+        egui::ComboBox::from_id_salt("voice")
+            .width(400.0)
+            .selected_text(name)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut self.session.voice, String::new(), "System default");
+                for voice in &self.voices {
+                    ui.selectable_value(&mut self.session.voice, voice.id.clone(), &voice.name);
+                }
+            });
+        ui.label(
+            RichText::new("Uses voices installed on this PC.")
+                .size(12.0)
+                .color(MUTED),
+        );
+        let rate =
+            ui.add(egui::Slider::new(&mut self.session.rate, -10..=10).text("Reading speed"));
+        if old != self.session.voice || rate.changed() {
+            self.stop();
+            self.mark_dirty();
+        }
+        if ui
+            .add(egui::Slider::new(&mut self.session.font_size, 14.0..=32.0).text("Text size"))
+            .changed()
+        {
+            self.mark_dirty();
+        }
+        ui.add_space(14.0);
+        ui.separator();
+        ui.add_space(14.0);
+        caption(ui, "UPDATES");
+        ui.horizontal(|ui| {
+            ui.label(concat!("TextReader ", env!("CARGO_PKG_VERSION")));
+            if ui
+                .add_enabled(!self.net_busy, egui::Button::new("Check for updates"))
+                .clicked()
+            {
+                self.check_updates(false);
+            }
+        });
+        if ui
+            .checkbox(
+                &mut self.session.startup_updates,
+                "Check for updates on startup",
+            )
+            .changed()
+        {
+            self.mark_dirty();
+        }
+        ui.label(RichText::new(&self.update_message).size(12.0).color(MUTED));
+        if let Some(update) = self.available.clone()
+            && ui
+                .add_enabled(
+                    !self.net_busy
+                        && !self.file_busy
+                        && !self.save_failed
+                        && !self.load_failed
+                        && !self.closing,
+                    primary("Download and install"),
+                )
+                .clicked()
+            && self.network.try_send(NetCommand::Install(update)).is_ok()
+        {
+            self.net_busy = true;
+            self.installation = Installation::Downloading;
+            self.message =
+                "Downloading your update. TextReader will save your place and restart.".into();
+        }
+        ui.add_space(14.0);
+        ui.separator();
+        ui.add_space(14.0);
+        caption(ui, "YOUR DATA");
+        ui.label(RichText::new("Your last document, bookmarks and preferences stay on this PC. Original documents are never changed.").color(MUTED).size(13.0));
+        ui.add(
+            egui::Label::new(
+                RichText::new(storage::data_dir().display().to_string())
+                    .monospace()
+                    .size(11.0)
+                    .color(MUTED),
+            )
+            .wrap(),
+        );
+        ui.hyperlink_to("Project and updates", updater::REPOSITORY);
+    }
 }
+
+#[cfg(test)]
+#[path = "view_tests.rs"]
+mod tests;
