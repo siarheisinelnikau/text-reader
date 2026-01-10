@@ -25,6 +25,7 @@ An independent local document listener for Windows x64, using installed desktop 
 - Include operation-specific explanations with native speech errors and add an opt-in synthetic SAPI integration check.
 - Ignore stale repaint requests that caused repeated scene work. In isolated five-second final samples, visible, minimized and restored idle states produced zero layout/raster/present operations.
 - Initialize the Windows accessibility adapter before showing the native window.
+- Fix overlapping title-bar hit regions that prevented Settings and Paste text from closing. Add a visible Done action, paste cancellation and Escape handling without discarding preferences or the current paste draft.
 
 ## Requirements and known limits
 

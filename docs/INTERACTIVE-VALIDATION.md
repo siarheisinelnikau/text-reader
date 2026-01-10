@@ -51,6 +51,18 @@ Formatting, Clippy with `-D warnings`, all 14 silent/fixture tests, optimized x6
 
 Remaining checks: actual input/scroll/focus/native file dialogs, physical audibility and subjective responsiveness after this redesign, screen-reader traversal, broader font/language/DPI coverage, clean-machine deployment and a live updater round-trip. Computer Use remains paused as requested. PDF/OCR, DRM and MP3 are explicitly unsupported.
 
+## Settings close regression
+
+The reported inability to close Settings was reproduced with pointer movement, press and release events delivered directly to the real egui components. Before the repair, clicking the center of the title-bar X left Settings open. A 24-point window frame margin made the title bar tall enough for egui's double-click title region to overlap the X; that region still receives clicks when collapsing is disabled. Paste text used the same problematic margins.
+
+Both dialogs now retain egui's compact title-bar margins and apply comfortable padding inside the content instead. Settings has a fixed Done footer outside its scrolling preferences; Paste text has Cancel. These actions explicitly close the window rather than its internal collapsing body. Escape closes the active dialog while preserving preferences or the paste draft; an expanded voice list receives Escape first. Reader playback shortcuts are inactive while a dialog is open.
+
+Seven in-process GUI regression tests check the X at its center and edges, Done and reopening, changed preferences, voice-popup Escape priority, paste X/Cancel, a focused paste editor, complete footer text visibility, and return to a settled repaint state. The tested logical sizes/scales are 1180 × 820 at 100% and 900 × 620 at 150%. All 21 tests, Clippy and release packaging passed. Tests create no native window, workers, profile, network or audio; they establish component input behavior, not Windows input routing or subjective responsiveness.
+
+The updated EXE produced fresh four-frame [Settings](images/settings.png) and [compact Settings](images/settings-compact.png) client-area captures, both visually inspected. The first review found the new footer clipped before layout settled; an adequate initial content height now keeps it fully visible before idle. The README image and [artifact manifest](validation/artifact-and-captures.json) are updated. Computer Use remains paused.
+
+One subsequent bounded CPU/GDI native diagnostic exited normally. Its five-second visible and minimized samples produced zero layout/raster/present operations; the restored sample produced 1,658 of each at 56.24% of one core. The run received 1,516 cursor-moved events, so it does not establish a clean restored-idle result. No further launch or input automation followed. The [raw diagnostic and assessment](validation/settings-close-gate-2026-10-31.json) retain the failing result; the earlier clean gate belongs to its earlier build. The component closing fix and static review pass, while full current-build idle/restore and perceived responsiveness remain unverified.
+
 ## Native icon follow-up
 
 Added the original teal book mark as a multi-resolution Windows ICO (16, 20, 24, 32, 40, 48, 64, 128 and 256 px), neutral-language EXE resources, and explicit window/taskbar icon attributes. Icon decoding occurs once during native window creation, outside the render loop. Cargo embeds the committed ICO with the existing Windows SDK resource compiler; Pillow is only an asset-regeneration tool. No separate icon file is required by the distributed EXE.

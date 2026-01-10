@@ -23,6 +23,8 @@ Full text wraps on a paper surface instead of being truncated into preview rows.
 
 Real application-generated Settings capture using an isolated fixture. The captured profile has startup update checks disabled; new normal profiles enable them by default. No account, cloud voice or model download is needed.
 
+Close Settings with **Done**, the title-bar **×**, or **Esc**. Preferences apply immediately and are kept when the panel closes. If the voice list is expanded, Esc closes the list first. **Paste text** also supports ×, **Cancel** and Esc, preserving your draft for the current session.
+
 ## Formats and limits
 
 | Format | Support |

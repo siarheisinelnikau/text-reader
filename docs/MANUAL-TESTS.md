@@ -2,6 +2,8 @@
 
 The initial code-only phase deferred these checks. Follow-up work verified native SAPI transport/export, real offscreen Reader/Settings PNGs and bounded CPU/GDI idle/minimized/restore scheduling. The latest user instruction pauses Computer Use. Actual clicks, native dialogs, keyboard traversal and subjective responsiveness therefore remain separate from the static review. See [INTERACTIVE-VALIDATION.md](INTERACTIVE-VALIDATION.md). Use synthetic documents and an isolated profile.
 
+The Settings closing regression now has in-process tests of the real egui components: X, Done, Escape/popup priority, reopening and draft/preference preservation. Real desktop input routing and keyboard traversal remain manual checks.
+
 - Launch the packaged x64 EXE on Windows 10 and 11, including a clean machine without the Rust toolchain. Confirm Windows DLL imports, the CPU/GDI backend, font coverage and display scaling at 100%, 150% and 200%.
 - Real Reader and Settings client PNGs are now embedded in README; verify native chrome separately. Inspect narrow-window layouts, long status messages, bookmarks and large font sizes.
 - Enumerate installed classic SAPI voices; test no-voice/unavailable-voice failure. Check two different installed voices and languages where available. Confirm that app startup emits no sound.
