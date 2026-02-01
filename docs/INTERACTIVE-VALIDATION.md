@@ -51,6 +51,14 @@ Formatting, Clippy with `-D warnings`, all 14 silent/fixture tests, optimized x6
 
 Remaining checks: actual input/scroll/focus/native file dialogs, physical audibility and subjective responsiveness after this redesign, screen-reader traversal, broader font/language/DPI coverage, clean-machine deployment and a live updater round-trip. Computer Use remains paused as requested. PDF/OCR, DRM and MP3 are explicitly unsupported.
 
+## Bookmark placement follow-up
+
+Bookmark creation now lives directly below the Contents/Bookmarks tabs in the left navigation panel. Saving opens the bookmark list, and an existing bookmark is shown as a readable teal Passage saved status. Optional naming, saved entries and removal share that panel. The detached action above the reading surface and the duplicate save button were removed. Fixed row widths also prevent a bookmark's remove button from widening the navigation rail.
+
+Reader, Bookmarks, compact Reader and both Settings captures were regenerated through the real EXE's four-frame CPU self-capture path and visually inspected. The Bookmarks fixture shows an already saved passage; it does not simulate desktop interaction. The backend, normal repaint scheduling and worker behavior are unchanged. Formatting, Clippy, all 21 existing tests and artifact checks passed. No Computer Use or further native performance launch was performed; the previous native restored-idle limitation remains unresolved.
+
+See [Reader](images/reader.png), [Bookmarks](images/bookmarks.png), [compact Reader at 150%](images/reader-compact.png) and the [capture manifest](validation/artifact-and-captures.json).
+
 ## Settings close regression
 
 The reported inability to close Settings was reproduced with pointer movement, press and release events delivered directly to the real egui components. Before the repair, clicking the center of the title-bar X left Settings open. A 24-point window frame margin made the title bar tall enough for egui's double-click title region to overlap the X; that region still receives clicks when collapsing is disabled. Paste text used the same problematic margins.

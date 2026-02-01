@@ -11,7 +11,7 @@ Real application-generated client-area capture, synthetic document, CPU/software
 1. Choose **Open document** or **Paste text**. TXT, Markdown, DOCX and unencrypted EPUB are supported.
 2. Press **Play**. The same button becomes **Pause** or **Resume**; Space also toggles playback when a text field is not focused. The current sentence or bounded passage is highlighted after submission to SAPI and advances on actual engine completion.
 3. Click a passage, chapter or bookmark to choose a starting point. **Previous** and **Next** move between paragraphs; page controls browse groups of five passages. Navigation stops playback. Press Play to start at the selected passage again.
-4. Use **Bookmark** to save your place, or open the **Bookmarks** tab to add a label or remove a bookmark. Up to 200 bookmarks per document are supported. The last document and reading position restore without automatically playing sound.
+4. Use **Bookmark passage** in the left navigation panel to save the highlighted passage and open **Bookmarks**. A saved passage shows **Passage saved**. The Bookmarks tab also lets you enter an optional name before saving or remove a bookmark. Up to 200 bookmarks per document are supported. The last document and reading position restore without automatically playing sound.
 5. Open **Settings** for voice, reading speed and text size. The system voice works by default; classic desktop SAPI voices are enumerated. Windows Narrator/OneCore-only voices may not appear. Voice/speed changes stop playback so the next Play uses the new choice.
 6. **Export audio** creates a new `.wav` containing the entire document with the selected voice and speed. Progress and cancellation are provided. Existing destination files are preserved.
 
@@ -63,7 +63,7 @@ Cargo uses at most two jobs and local `target/`. Packaging generates `dist/TextR
 
 The original book icon is embedded in the EXE for Explorer/shortcuts and assigned explicitly to the native window and taskbar. The Windows SDK resource compiler embeds the committed multi-resolution ICO during Cargo builds; no separate icon file is needed beside the release EXE. `scripts/verify-artifact.ps1` checks the actual icon resources and sizes in the built PE file. Editable assets are in `assets/`; `scripts/generate-icon.py` needs Pillow only when regenerating them.
 
-Static review without Computer Use: `scripts/capture.ps1 -Output ABSOLUTE.png -Screen reader|settings|empty`. It launches the real EXE in an isolated, bounded offscreen render-save-exit mode; no workers, user profile, audio or update requests are started. Width/height are logical pixels and `-Scale` controls physical output. Screenshots verify the client UI, not native chrome, dialogs or input traversal.
+Static review without Computer Use: `scripts/capture.ps1 -Output ABSOLUTE.png -Screen reader|bookmarks|settings|empty`. It launches the real EXE in an isolated, bounded offscreen render-save-exit mode; no workers, user profile, audio or update requests are started. Width/height are logical pixels and `-Scale` controls physical output. Screenshots verify the client UI, not native chrome, dialogs or input traversal.
 
 Opt-in backend check: `cargo run --locked --example sapi_smoke -j 2` renders synthetic speech into `.test-output/`. Add `-- --playback` only when sound is authorized to test real SAPI transport as well. `scripts/diagnose.ps1 -Output ABSOLUTE.json` runs a bounded isolated visible/minimized/restored scheduling test and exits; it is separate from static capture.
 

@@ -1,8 +1,8 @@
 {
   "version": "0.1.0",
   "executable": "dist/TextReader-v0.1.0.exe",
-  "bytes": 8428032,
-  "sha256": "9b8bac8086b509b021b5fa395992ac7ec051b5f66265fdf2f19979269c080d27",
+  "bytes": 8439808,
+  "sha256": "b5d947ed84d1e19ecb142eb66489dc24e82b75931c40139ab82accb7748e8192",
   "backend": "CPU egui_software_backend 0.0.2 -> retained BGRA -> softbuffer 0.4.8 Windows GDI",
   "captures": [
     {
@@ -21,8 +21,8 @@
       "native_window_created": false,
       "workers_network_audio_started": false,
       "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
-      "sha256": "5b838051cd77bf324ef6ff4d084c73e6fe9a67c7f42dc3193130603b3c5a2bc2",
-      "capture_executable_sha256": "fa24a87ca0e413edf8dfc8fec5fd5ef8af8e5178d86556eca3e43a735bcccf8c"
+      "sha256": "ca1802adff0fd0fa3514a3ad6de2cfd1872a95ad94202018fe76c0ca169471be",
+      "capture_executable_sha256": "b5d947ed84d1e19ecb142eb66489dc24e82b75931c40139ab82accb7748e8192"
     },
     {
       "file": "docs/images/settings.png",
@@ -40,8 +40,8 @@
       "native_window_created": false,
       "workers_network_audio_started": false,
       "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
-      "sha256": "2181551c30978a8224cb851add7c50844b1d53f9fcacf61b523c309753ebbae3",
-      "capture_executable_sha256": "9b8bac8086b509b021b5fa395992ac7ec051b5f66265fdf2f19979269c080d27"
+      "sha256": "1c69895e0f92e661183dca4e41e13fcb9ce06a473ddd22d8bbfd6492bb089387",
+      "capture_executable_sha256": "b5d947ed84d1e19ecb142eb66489dc24e82b75931c40139ab82accb7748e8192"
     },
     {
       "file": "docs/images/empty.png",
@@ -78,8 +78,46 @@
       "native_window_created": false,
       "workers_network_audio_started": false,
       "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
-      "sha256": "30b7f522b786fffd595886db58799dc68cfcf2dbeb12b7493494eed199cf27c4",
-      "capture_executable_sha256": "9b8bac8086b509b021b5fa395992ac7ec051b5f66265fdf2f19979269c080d27"
+      "sha256": "82181f616abe1b3a57ba35eea71ede11c7d4d21ba6088a8559361add4a6658d4",
+      "capture_executable_sha256": "b5d947ed84d1e19ecb142eb66489dc24e82b75931c40139ab82accb7748e8192"
+    },
+    {
+      "file": "docs/images/bookmarks.png",
+      "screen": "bookmarks",
+      "logical_size": [
+        1180,
+        820
+      ],
+      "scale": 1,
+      "physical_size": [
+        1180,
+        820
+      ],
+      "frames": 4,
+      "native_window_created": false,
+      "workers_network_audio_started": false,
+      "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
+      "sha256": "b6800fc63fc38c4faff7db1f35eae91c819ce5648b27786a0d46762e08794253",
+      "capture_executable_sha256": "b5d947ed84d1e19ecb142eb66489dc24e82b75931c40139ab82accb7748e8192"
+    },
+    {
+      "file": "docs/images/reader-compact.png",
+      "screen": "reader",
+      "logical_size": [
+        900,
+        620
+      ],
+      "scale": 1.5,
+      "physical_size": [
+        1350,
+        930
+      ],
+      "frames": 4,
+      "native_window_created": false,
+      "workers_network_audio_started": false,
+      "scope": "real shared application client components and CPU rasterizer; deterministic synthetic fixture; no native chrome or input verification",
+      "sha256": "b676ae02e6056a5b9a0b58d3aa775643344c745b4125979ee83115f7d8a6f9b1",
+      "capture_executable_sha256": "b5d947ed84d1e19ecb142eb66489dc24e82b75931c40139ab82accb7748e8192"
     }
   ],
   "native_icon": {
@@ -99,5 +137,5 @@
     "window_and_taskbar": "explicit winit icon attributes",
     "report": "docs/validation/icon-2026-10-31.json"
   },
-  "capture_note": "Settings and compact Settings refreshed after the close-button/footer repair. Reader and empty captures predate the dialog-only changes and remain accurate; their original capture-build hashes are retained."
+  "capture_note": "Reader, Bookmarks, compact Reader and both Settings captures refreshed after grouping bookmark controls in the navigation panel. The empty capture predates these document-only changes and remains accurate; its original capture-build hash is retained. Static captures do not establish current native runtime performance."
 }

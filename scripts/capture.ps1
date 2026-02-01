@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$Output,
-    [ValidateSet('reader','settings','empty')][string]$Screen='reader',
+    [ValidateSet('reader','bookmarks','settings','empty')][string]$Screen='reader',
     [int]$Width=1180,
     [int]$Height=820,
     [double]$Scale=1

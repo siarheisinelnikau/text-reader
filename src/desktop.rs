@@ -106,7 +106,7 @@ impl Raster {
 
 pub fn capture(path: &Path, screen: &str, width: u32, height: u32, scale: f32) -> Result<()> {
     ensure!(
-        matches!(screen, "reader" | "settings" | "empty"),
+        matches!(screen, "reader" | "bookmarks" | "settings" | "empty"),
         "Unknown capture screen: {screen}"
     );
     ensure!(path.is_absolute(), "Screenshot path must be absolute");

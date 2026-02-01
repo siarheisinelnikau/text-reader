@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
     let result = if args.get(1).is_some_and(|s| s == "--screenshot") {
         anyhow::ensure!(
             args.len() >= 3,
-            "Usage: --screenshot ABSOLUTE.png [--screen reader|settings|empty] [--width 1180] [--height 820] [--scale 1]"
+            "Usage: --screenshot ABSOLUTE.png [--screen reader|bookmarks|settings|empty] [--width 1180] [--height 820] [--scale 1]"
         );
         let mut screen = "reader";
         let mut width = 1180;
