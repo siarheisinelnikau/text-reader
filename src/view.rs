@@ -186,6 +186,45 @@ impl App {
                     ui.selectable_value(&mut self.bookmark_tab, true, "Bookmarks");
                 });
                 ui.add_space(12.0);
+                if self.bookmark_tab {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.bookmark_label)
+                            .hint_text("Bookmark name (optional)")
+                            .char_limit(100),
+                    );
+                }
+                let position = self.session.positions.get(&doc.id);
+                let saved = position
+                    .is_some_and(|p| p.bookmarks.iter().any(|mark| mark.chunk == self.cursor));
+                let full = position.is_some_and(|p| p.bookmarks.len() >= 200);
+                if saved {
+                    egui::Frame::new()
+                        .fill(TINT)
+                        .corner_radius(8)
+                        .show(ui, |ui| {
+                            ui.add_sized(
+                                [ui.available_width(), 36.0],
+                                egui::Label::new(RichText::new("Passage saved").color(ACCENT)),
+                            );
+                        })
+                        .response
+                        .on_hover_text("This passage is already in Bookmarks");
+                } else if ui
+                    .add_enabled(
+                        !full,
+                        egui::Button::new("Bookmark passage")
+                            .min_size(vec2(ui.available_width(), 36.0)),
+                    )
+                    .on_hover_text("Save the highlighted passage in Bookmarks")
+                    .on_disabled_hover_text(
+                        "Remove a bookmark before adding another (200 per document)",
+                    )
+                    .clicked()
+                {
+                    self.add_bookmark();
+                    self.bookmark_tab = true;
+                }
+                ui.add_space(12.0);
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if !self.bookmark_tab {
                         let active = doc
@@ -210,15 +249,6 @@ impl App {
                             }
                         }
                     } else {
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.bookmark_label)
-                                .hint_text("Bookmark name (optional)")
-                                .char_limit(100),
-                        );
-                        if ui.button("Save this passage").clicked() {
-                            self.add_bookmark();
-                        }
-                        ui.add_space(12.0);
                         let marks = self
                             .session
                             .positions
@@ -233,9 +263,14 @@ impl App {
                         let mut remove = None;
                         for (index, mark) in marks.iter().enumerate() {
                             ui.horizontal(|ui| {
+                                let remove_width = 36.0;
+                                let label_width = (ui.available_width()
+                                    - remove_width
+                                    - ui.spacing().item_spacing.x)
+                                    .max(0.0);
                                 if ui
                                     .add_sized(
-                                        [ui.available_width() - 32.0, 40.0],
+                                        [label_width, 40.0],
                                         egui::Button::new(&mark.label).wrap().frame(false),
                                     )
                                     .clicked()
@@ -243,7 +278,7 @@ impl App {
                                     self.seek(mark.chunk);
                                 }
                                 if ui
-                                    .small_button("×")
+                                    .add_sized([remove_width, 36.0], egui::Button::new("×"))
                                     .on_hover_text("Remove bookmark")
                                     .clicked()
                                 {
@@ -305,19 +340,7 @@ impl App {
                 .layout(egui::Layout::top_down(egui::Align::Min)),
             |ui| {
                 ui.set_max_width(width);
-                ui.horizontal(|ui| {
-                    caption(ui, "READING ROOM");
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .button("Bookmark")
-                            .on_hover_text("Save the current passage")
-                            .clicked()
-                        {
-                            self.add_bookmark();
-                            self.bookmark_tab = true;
-                        }
-                    });
-                });
+                caption(ui, "READING ROOM");
                 ui.add_space(8.0);
                 ui.label(RichText::new(&doc.title).size(30.0).strong());
                 ui.add_space(4.0);

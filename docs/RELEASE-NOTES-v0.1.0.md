@@ -14,6 +14,7 @@ An independent local document listener for Windows x64, using installed desktop 
 ## Improved
 
 - A quieter reading room replaces truncated preview rows with wrapped passages, page navigation, a separate contents/bookmarks rail and a compact bottom player.
+- Keep bookmark actions together in the left navigation panel, with a visible saved state for the current passage.
 - Use CPU/software rasterization and Windows GDI instead of an OpenGL renderer. Retain the last bitmap and wait when no useful UI work is pending.
 - Add isolated render-save-exit screenshots and a bounded visible/minimized/restored performance diagnostic.
 - Preserve the selected reading page after restoration, keep pasted text on recoverable errors and allow audio export while a startup update check is pending.

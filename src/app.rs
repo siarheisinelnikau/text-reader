@@ -633,13 +633,14 @@ impl App {
         self.voice_ready = true;
         self.session.startup_updates = false;
         self.settings = screen == "settings";
+        self.bookmark_tab = screen == "bookmarks";
         self.message.clear();
         self.update_message = "Not checked this session.".into();
         if !empty {
             let text = include_str!("../tests/fixtures/design.txt");
             let document = Document::from_text("A quieter way to read".into(), text.into())?;
             self.session.document = Some(Arc::new(document));
-            self.cursor = 1;
+            self.cursor = if self.bookmark_tab { 4 } else { 1 };
             self.session
                 .positions
                 .entry(self.session.document.as_ref().unwrap().id.clone())
