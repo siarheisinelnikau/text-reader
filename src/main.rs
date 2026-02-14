@@ -11,16 +11,11 @@ mod theme;
 
 #[cfg(windows)]
 fn main() -> anyhow::Result<()> {
-    diagnostics::initialize();
-    let args: Vec<String> = std::env::args().collect();
+    let mut args: Vec<String> = std::env::args().collect();
     if args.get(1).is_some_and(|s| s == "--apply-update") {
-        if let Err(error) = text_reader::updater::apply_update(&args) {
-            let dir = args
-                .get(3)
-                .and_then(|target| std::path::Path::new(target).parent())
-                .map(|parent| parent.join("TextReader.data"))
-                .filter(|path| path.is_dir())
-                .unwrap_or_else(text_reader::storage::data_dir);
+        anyhow::ensure!(args.len() == 2, "Invalid update helper arguments");
+        if let Err(error) = text_reader::updater::apply_update() {
+            let dir = text_reader::updater::error_data_dir();
             let _ = std::fs::create_dir_all(&dir);
             let _ = std::fs::write(
                 dir.join("update-error.txt"),
@@ -29,6 +24,15 @@ fn main() -> anyhow::Result<()> {
         }
         return Ok(());
     }
+    diagnostics::initialize();
+    let cleanup = if args.get(1).is_some_and(|s| s == "--cleanup-update") {
+        anyhow::ensure!(args.len() == 3, "Usage: --cleanup-update DIRECTORY");
+        let directory = Some(std::path::PathBuf::from(&args[2]));
+        args.truncate(1);
+        directory
+    } else {
+        None
+    };
     let result = if args.get(1).is_some_and(|s| s == "--screenshot") {
         anyhow::ensure!(
             args.len() >= 3,
@@ -53,10 +57,10 @@ fn main() -> anyhow::Result<()> {
         desktop::capture(std::path::Path::new(&args[2]), screen, width, height, scale)
     } else if args.get(1).is_some_and(|s| s == "--diagnose") {
         anyhow::ensure!(args.len() == 3, "Usage: --diagnose ABSOLUTE.json");
-        desktop::run(Some(args[2].clone().into()))
+        desktop::run(Some(args[2].clone().into()), None)
     } else {
         anyhow::ensure!(args.len() == 1, "Unknown command-line options");
-        desktop::run(None)
+        desktop::run(None, cleanup)
     };
     diagnostics::event(&format!("application returned: {result:?}"));
     result

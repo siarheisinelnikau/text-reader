@@ -1,5 +1,4 @@
 use std::{
-    path::PathBuf,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -12,7 +11,7 @@ use text_reader::{
     playback::{Audio, Player, State, Voice},
     speech::Sapi,
     storage::{self, Bookmark, Session},
-    updater::{self, Update},
+    updater::{self, Prepared, Update},
 };
 
 enum SpeechCommand {
@@ -30,12 +29,12 @@ enum FileCommand {
 enum NetCommand {
     Check(bool),
     Install(Update),
-    PrepareInstall(PathBuf),
+    PrepareInstall(Prepared),
 }
 enum Installation {
     None,
     Downloading,
-    Downloaded(PathBuf),
+    Downloaded(Prepared),
     Preparing,
     Ready,
 }
@@ -49,7 +48,7 @@ enum Event {
     Check(bool, Result<Option<Update>, String>),
     Progress(&'static str, f32),
     FileDone(Result<String, String>),
-    Downloaded(Result<PathBuf, String>),
+    Downloaded(Result<Prepared, String>),
     Install(Result<(), String>),
 }
 
@@ -271,10 +270,9 @@ impl App {
                                 ),
                             ),
                             NetCommand::Install(update) => {
-                                let result = (|| -> anyhow::Result<PathBuf> {
-                                    let dir = storage::data_dir().join("updates");
+                                let result = (|| -> anyhow::Result<Prepared> {
                                     let mut last = -1i32;
-                                    let staged = updater::download(&update, &dir, |p| {
+                                    let staged = updater::download(&update, |p| {
                                         let percent = (p * 100.0) as i32;
                                         if percent != last {
                                             last = percent;
@@ -293,15 +291,12 @@ impl App {
                                     Event::Downloaded(result.map_err(|e| format!("{e:#}"))),
                                 );
                             }
-                            NetCommand::PrepareInstall(staged) => publish(
+                            NetCommand::PrepareInstall(mut staged) => publish(
                                 &tx,
                                 &ctx,
                                 Event::Install(
-                                    updater::stage_install(
-                                        &staged,
-                                        &storage::data_dir().join("updates"),
-                                    )
-                                    .map_err(|e| format!("{e:#}")),
+                                    updater::stage_install(&mut staged)
+                                        .map_err(|e| format!("{e:#}")),
                                 ),
                             ),
                         }
@@ -583,19 +578,28 @@ impl App {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
         if self.closing && !self.saving && !self.dirty {
-            match &self.installation {
-                Installation::Downloaded(path) => {
-                    if self
-                        .network
-                        .try_send(NetCommand::PrepareInstall(path.clone()))
-                        .is_ok()
-                    {
-                        self.installation = Installation::Preparing;
+            match std::mem::replace(&mut self.installation, Installation::Preparing) {
+                Installation::Downloaded(staged) => {
+                    if let Err(error) = self.network.try_send(NetCommand::PrepareInstall(staged)) {
+                        match error {
+                            mpsc::TrySendError::Full(NetCommand::PrepareInstall(staged)) => {
+                                self.installation = Installation::Downloaded(staged);
+                            }
+                            _ => {
+                                self.installation = Installation::None;
+                                self.net_busy = false;
+                                self.closing = false;
+                                self.message =
+                                    "The update worker stopped. Restart TextReader and retry."
+                                        .into();
+                            }
+                        }
                     }
                 }
                 Installation::Preparing => {}
-                Installation::None | Installation::Ready | Installation::Downloading => {
-                    self.exit_ready = true
+                state @ (Installation::None | Installation::Ready | Installation::Downloading) => {
+                    self.installation = state;
+                    self.exit_ready = true;
                 }
             }
         }

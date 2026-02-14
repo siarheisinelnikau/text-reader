@@ -16,6 +16,7 @@ try {
     New-Item -ItemType Directory -Path dist -Force | Out-Null
     $destination = Join-Path $repoRoot "dist/$artifactName"
     Copy-Item -LiteralPath target/x86_64-pc-windows-msvc/release/text-reader.exe -Destination $destination
+    Copy-Item -LiteralPath docs/licenses/rust-auto-updator-MIT.txt -Destination dist/LICENSE-rust-auto-updator.txt
     $digest = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
     [System.IO.File]::WriteAllText((Join-Path $repoRoot 'dist/SHA256SUMS.txt'), "$digest  $artifactName`n", [System.Text.UTF8Encoding]::new($false))
     Write-Output "Prepared $destination"
