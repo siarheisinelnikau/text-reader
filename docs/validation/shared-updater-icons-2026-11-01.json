@@ -1,0 +1,143 @@
+{
+  "executable": "E:\\work\\github\\text-reader\\dist\\TextReader-v0.1.0.exe",
+  "source": "E:\\work\\github\\text-reader\\assets\\text-reader.ico",
+  "proof": "LoadLibraryEx resource-only -> LoadImageW group 1 -> DrawIconEx memory DIB",
+  "surfaces": "light/dark native-size icon resource proof; no application/desktop windows, no OS tray interaction",
+  "frames": [
+    {
+      "size": 16,
+      "alpha_bounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visible_bounds": [
+        1,
+        1,
+        15,
+        15
+      ]
+    },
+    {
+      "size": 20,
+      "alpha_bounds": [
+        0,
+        0,
+        20,
+        20
+      ],
+      "visible_bounds": [
+        1,
+        1,
+        19,
+        19
+      ]
+    },
+    {
+      "size": 24,
+      "alpha_bounds": [
+        0,
+        0,
+        24,
+        24
+      ],
+      "visible_bounds": [
+        2,
+        2,
+        22,
+        22
+      ]
+    },
+    {
+      "size": 32,
+      "alpha_bounds": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "visible_bounds": [
+        2,
+        2,
+        30,
+        30
+      ]
+    },
+    {
+      "size": 40,
+      "alpha_bounds": [
+        0,
+        0,
+        40,
+        40
+      ],
+      "visible_bounds": [
+        2,
+        2,
+        38,
+        38
+      ]
+    },
+    {
+      "size": 48,
+      "alpha_bounds": [
+        0,
+        0,
+        48,
+        48
+      ],
+      "visible_bounds": [
+        3,
+        3,
+        45,
+        45
+      ]
+    },
+    {
+      "size": 64,
+      "alpha_bounds": [
+        1,
+        1,
+        63,
+        63
+      ],
+      "visible_bounds": [
+        4,
+        4,
+        60,
+        60
+      ]
+    },
+    {
+      "size": 128,
+      "alpha_bounds": [
+        5,
+        5,
+        123,
+        123
+      ],
+      "visible_bounds": [
+        8,
+        8,
+        120,
+        120
+      ]
+    },
+    {
+      "size": 256,
+      "alpha_bounds": [
+        13,
+        13,
+        243,
+        243
+      ],
+      "visible_bounds": [
+        16,
+        16,
+        240,
+        240
+      ]
+    }
+  ]
+}

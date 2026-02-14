@@ -49,7 +49,7 @@ The planned canonical repository is [siarheisinelnikau/text-reader](https://gith
 
 The desktop uses a CPU rasterizer, retained bitmap and Windows GDI presentation, with no OpenGL/DirectX renderer. The event loop waits when idle. A bounded isolated test verified zero layout/raster/present operations during five-second visible, minimized and restored idle samples; this does not establish every interactive timing or disable Windows desktop composition. See [validation details](docs/INTERACTIVE-VALIDATION.md), [architecture](docs/ARCHITECTURE.md) and [remaining manual checks](docs/MANUAL-TESTS.md).
 
-The intended platform is Windows 10/11 x64 with a classic SAPI voice. A Rust/MSVC toolchain and Windows SDK are required to build; no WebView, external extractor, speech script, model or paid API is required to run. Clean-machine compatibility and the minimum Windows version still need validation.
+The intended platform is Windows 10/11 x64 with a classic SAPI voice. Rust 1.95 or newer, the MSVC toolchain and Windows SDK are required to build; no WebView, external extractor, speech script, model or paid API is required to run. Clean-machine compatibility and the minimum Windows version still need validation.
 
 ```powershell
 cargo fmt --all -- --check
@@ -70,3 +70,11 @@ Opt-in backend check: `cargo run --locked --example sapi_smoke -j 2` renders syn
 ## License and provenance
 
 [MIT](LICENSE). Dependencies retain their licenses. [NaturalReader software](https://www.naturalreaders.com/software.html) informed the document-listening use case only; no competitor code or assets are included. See the [initial release draft](docs/RELEASE-NOTES-v0.1.0.md) and [original code-only verification](docs/VERIFICATION.md) for historical context.
+
+## Shared updater source
+
+Keep the local `rust-auto-updator` workspace beside this repository. Cargo uses `../rust-auto-updator/crates/rust-auto-updator`; the companion is currently unpublished, so standalone clone/CI builds need that source provisioned first. `src/updater.rs` now contains product configuration and adapters only. The companion core owns release selection, download integrity, x64 PE validation, native replacement, rollback and staging cleanup. The existing `TextReader-vVERSION.exe` plus `SHA256SUMS.txt` contract, saved startup opt-out and save-before-restart workflow are preserved. Earlier installed versions use their own existing helper and can replace/relaunch this EXE without flags. Future releases use the shared helper protocol.
+
+Icon proof without application launch: `python scripts/verify-icon-pixels.py dist/TextReader-v0.1.0.exe assets/text-reader.ico .test-output/icons.png` uses Pillow and resource-only loading plus native DrawIconEx memory bitmaps. It checks nonblank native-size resources on light/dark backgrounds. TextReader intentionally has no tray. Title-bar/taskbar icons now load the embedded 16/32px families at the current DPI and refresh when monitor scaling changes.
+
+Current migration evidence: [shared updater, icon and rendering audit](docs/UPDATER-AUDIT-2026-11-01.md).

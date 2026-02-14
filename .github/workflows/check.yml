@@ -10,6 +10,12 @@ jobs:
       CARGO_TARGET_DIR: target
     steps:
       - uses: actions/checkout@v4
+      - name: Require the companion updater source
+        shell: pwsh
+        run: |
+          if (-not (Test-Path ../rust-auto-updator/crates/rust-auto-updator/Cargo.toml)) {
+            throw 'This local integration requires the rust-auto-updator workspace beside text-reader. Provision the companion source before standalone CI can run.'
+          }
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy

@@ -9,7 +9,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use winit::platform::windows::WindowAttributesExtWindows;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -17,13 +16,64 @@ use winit::{
     window::{Window, WindowId},
 };
 
-fn application_icon() -> Result<winit::window::Icon> {
-    let image = image::load_from_memory(include_bytes!("../assets/icon.png"))
-        .context("Cannot decode the embedded application icon")?
-        .into_rgba8();
-    let (width, height) = image.dimensions();
-    winit::window::Icon::from_rgba(image.into_raw(), width, height)
-        .context("Cannot initialize the Windows application icon")
+fn apply_application_icons(window: &Window) -> Result<()> {
+    use winit::{
+        dpi::PhysicalSize,
+        platform::windows::{IconExtWindows, WindowExtWindows},
+        window::Icon,
+    };
+    let size = |logical: f64| (logical * window.scale_factor()).round().max(1.0) as u32;
+    let small = size(16.0);
+    let large = size(32.0);
+    window.set_window_icon(Some(Icon::from_resource(
+        1,
+        Some(PhysicalSize::new(small, small)),
+    )?));
+    window.set_taskbar_icon(Some(Icon::from_resource(
+        1,
+        Some(PhysicalSize::new(large, large)),
+    )?));
+    Ok(())
+}
+
+fn native_icons(window: &Window) -> serde_json::Value {
+    use windows_sys::Win32::{
+        Graphics::Gdi::{BITMAP, DeleteObject, GetObjectW},
+        UI::WindowsAndMessaging::{
+            GetIconInfo, ICON_BIG, ICON_SMALL, ICONINFO, SendMessageW, WM_GETICON,
+        },
+    };
+    use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let Ok(handle) = window.window_handle() else {
+        return serde_json::Value::Null;
+    };
+    let RawWindowHandle::Win32(handle) = handle.as_raw() else {
+        return serde_json::Value::Null;
+    };
+    let dimensions = |kind: u32| -> Option<[i32; 2]> {
+        // Reads this diagnostic window only, never another application's handles.
+        unsafe {
+            let icon = SendMessageW(handle.hwnd.get() as _, WM_GETICON, kind as usize, 0) as _;
+            let mut info = ICONINFO::default();
+            if GetIconInfo(icon, &mut info) == 0 {
+                return None;
+            }
+            let mut bitmap = BITMAP::default();
+            let read = GetObjectW(
+                info.hbmColor,
+                std::mem::size_of::<BITMAP>() as i32,
+                (&mut bitmap as *mut BITMAP).cast(),
+            );
+            if !info.hbmColor.is_null() {
+                DeleteObject(info.hbmColor);
+            }
+            if !info.hbmMask.is_null() {
+                DeleteObject(info.hbmMask);
+            }
+            (read != 0).then_some([bitmap.bmWidth, bitmap.bmHeight])
+        }
+    };
+    serde_json::json!({"small":dimensions(ICON_SMALL),"large":dimensions(ICON_BIG),"scale":window.scale_factor()})
 }
 
 #[derive(Debug)]
@@ -178,6 +228,7 @@ struct Desktop {
     error: Option<anyhow::Error>,
     causes: std::collections::BTreeMap<String, u64>,
     window_events: std::collections::BTreeMap<String, u64>,
+    cleanup: Option<PathBuf>,
 }
 impl Desktop {
     fn visible(&self) -> bool {
@@ -349,7 +400,7 @@ impl Desktop {
                 run.deadline = Instant::now() + Duration::from_secs(5);
             }
             _ => {
-                let report = serde_json::json!({"backend":"egui CPU rasterizer -> retained BGRA bitmap -> softbuffer Windows GDI","process_id":std::process::id(),"profile":"optimized release required","scenario":"isolated populated fixture; no worker/network/audio tasks; no input automation","samples":run.samples,"totals":self.counts,"repaint_causes":self.causes,"window_events":self.window_events,"scope":"idle/minimized/restore scheduling and CPU only; not perceived interaction smoothness or GPU telemetry"});
+                let report = serde_json::json!({"backend":"egui CPU rasterizer -> retained BGRA bitmap -> softbuffer Windows GDI","process_id":std::process::id(),"profile":"optimized release required","scenario":"isolated populated fixture; no worker/network/audio tasks; no input automation","samples":run.samples,"totals":self.counts,"repaint_causes":self.causes,"window_events":self.window_events,"native_icons":self.window.as_ref().map(|window|native_icons(window)),"scope":"idle/minimized/restore scheduling and CPU plus native icon assignment; not perceived interaction smoothness or GPU telemetry"});
                 if let Some(parent) = run.path.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
@@ -390,18 +441,16 @@ impl ApplicationHandler<Wake> for Desktop {
             return;
         }
         let result = (|| -> Result<()> {
-            let icon = application_icon()?;
             let window = Arc::new(
                 event_loop.create_window(
                     Window::default_attributes()
                         .with_title("TextReader")
-                        .with_window_icon(Some(icon.clone()))
-                        .with_taskbar_icon(Some(icon))
                         .with_visible(false)
                         .with_inner_size(winit::dpi::LogicalSize::new(1180.0, 820.0))
                         .with_min_inner_size(winit::dpi::LogicalSize::new(900.0, 620.0)),
                 )?,
             );
+            apply_application_icons(&window)?;
             let display = softbuffer::Context::new(event_loop.owned_display_handle())
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
             let surface = softbuffer::Surface::new(&display, window.clone())
@@ -425,6 +474,12 @@ impl ApplicationHandler<Wake> for Desktop {
             self.surface = Some(surface);
             self.display = Some(display);
             window.set_visible(true);
+            if let Some(directory) = self.cleanup.take() {
+                rust_auto_updator::cleanup_after_update(
+                    directory,
+                    text_reader::updater::config()?.install,
+                );
+            }
             crate::diagnostics::event(
                 "backend=CPU software rasterizer; presentation=softbuffer Win32 GDI; scheduling=Wait/WaitUntil",
             );
@@ -472,6 +527,12 @@ impl ApplicationHandler<Wake> for Desktop {
                 }
             }
             WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                if matches!(event, WindowEvent::ScaleFactorChanged { .. })
+                    && let Err(error) = apply_application_icons(&window)
+                {
+                    self.fail(event_loop, error);
+                    return;
+                }
                 self.dirty = true;
                 if self.visible() {
                     window.request_redraw();
@@ -560,7 +621,7 @@ impl ApplicationHandler<Wake> for Desktop {
     }
 }
 
-pub fn run(diagnostic: Option<PathBuf>) -> Result<()> {
+pub fn run(diagnostic: Option<PathBuf>, cleanup: Option<PathBuf>) -> Result<()> {
     if let Some(path) = &diagnostic {
         ensure!(
             path.is_absolute() && !path.exists(),
@@ -603,6 +664,7 @@ pub fn run(diagnostic: Option<PathBuf>) -> Result<()> {
         error: None,
         causes: Default::default(),
         window_events: Default::default(),
+        cleanup,
     };
     event_loop
         .run_app(&mut desktop)
