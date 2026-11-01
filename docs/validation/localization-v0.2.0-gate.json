@@ -11,7 +11,7 @@
       16
     ]
   },
-  "process_id": 37884,
+  "process_id": 39892,
   "profile": "optimized release required",
   "repaint_causes": {
     "C:\\Users\\user\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\egui-0.33.3\\src\\containers\\scroll_area.rs:1448 ": 1
@@ -28,23 +28,23 @@
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0001492,
+      "seconds": 5.0004964,
       "settled": true,
       "state": "visible_idle",
       "state_valid": true
     },
     {
-      "cpu_seconds": 0.0,
+      "cpu_seconds": 0.015625,
       "layout_ms": 0.0,
       "layouts": 0,
       "observed_visible": false,
-      "percent_of_one_core": 0.0,
+      "percent_of_one_core": 0.31249729377343594,
       "present_ms": 0.0,
       "presents": 0,
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0002052,
+      "seconds": 5.0000433,
       "settled": true,
       "state": "minimized_idle",
       "state_valid": true
@@ -60,7 +60,7 @@
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0004714,
+      "seconds": 5.0000688,
       "settled": true,
       "state": "restored_idle",
       "state_valid": true
@@ -69,11 +69,11 @@
   "scenario": "isolated populated fixture; no worker/network/audio tasks; no input automation",
   "scope": "idle/minimized/restore scheduling and CPU plus native icon assignment; not perceived interaction smoothness or GPU telemetry",
   "totals": {
-    "layout_ms": 2.9053999999999998,
+    "layout_ms": 2.4965,
     "layouts": 4,
-    "present_ms": 7.3096,
+    "present_ms": 6.067199999999999,
     "presents": 4,
-    "raster_ms": 14.583400000000001,
+    "raster_ms": 13.660099999999998,
     "rasters": 4,
     "retained_blits": 0
   },
@@ -99,8 +99,8 @@
     "RPCRT4.dll",
     "oleaut32.dll",
     "shell32.dll",
-    "advapi32.dll",
     "uiautomationcore.dll",
+    "advapi32.dll",
     "msvcrt.dll",
     "sechost.dll",
     "crypt32.dll",

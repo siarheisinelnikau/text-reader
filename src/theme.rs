@@ -42,6 +42,12 @@ pub fn palette(theme: text_reader::storage::Theme) -> Palette {
     }
 }
 pub fn apply(ctx: &egui::Context, theme: text_reader::storage::Theme) {
+    // Pin the saved preference before styling its active light/dark branch.
+    // Native ThemeChanged events must not replace an explicit app choice.
+    ctx.set_theme(match theme {
+        text_reader::storage::Theme::Light => egui::Theme::Light,
+        text_reader::storage::Theme::Dark => egui::Theme::Dark,
+    });
     let palette = palette(theme);
     let mut style = egui::Style {
         visuals: match theme {
@@ -112,5 +118,44 @@ pub fn load_fonts(ctx: &egui::Context) {
             .or_default()
             .insert(0, "Segoe UI".into());
         ctx.set_fonts(fonts);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use text_reader::storage::Theme;
+
+    #[test]
+    fn saved_theme_wins_over_opposite_system_theme() {
+        for saved in [Theme::Light, Theme::Dark] {
+            let ctx = egui::Context::default();
+            apply(&ctx, saved);
+            let requested = match saved {
+                Theme::Light => egui::Theme::Light,
+                Theme::Dark => egui::Theme::Dark,
+            };
+            let opposite = match requested {
+                egui::Theme::Light => egui::Theme::Dark,
+                egui::Theme::Dark => egui::Theme::Light,
+            };
+            for system in [opposite, requested, opposite] {
+                let _ = ctx.run(
+                    egui::RawInput {
+                        system_theme: Some(system),
+                        ..Default::default()
+                    },
+                    |_| {},
+                );
+                assert_eq!(ctx.theme(), requested);
+                assert_eq!(ctx.style().visuals.dark_mode, saved == Theme::Dark);
+                assert_eq!(ctx.style().visuals.panel_fill, palette(saved).surface);
+                assert_eq!(
+                    ctx.style().visuals.override_text_color,
+                    Some(palette(saved).ink)
+                );
+                assert_eq!(ctx.style().text_styles[&TextStyle::Body].size, 15.0);
+            }
+        }
     }
 }
