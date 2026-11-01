@@ -154,7 +154,15 @@ impl Raster {
     }
 }
 
-pub fn capture(path: &Path, screen: &str, width: u32, height: u32, scale: f32) -> Result<()> {
+pub fn capture(
+    path: &Path,
+    screen: &str,
+    width: u32,
+    height: u32,
+    scale: f32,
+    language: text_reader::i18n::Language,
+    theme: text_reader::storage::Theme,
+) -> Result<()> {
     ensure!(
         matches!(screen, "reader" | "bookmarks" | "settings" | "empty"),
         "Unknown capture screen: {screen}"
@@ -169,6 +177,7 @@ pub fn capture(path: &Path, screen: &str, width: u32, height: u32, scale: f32) -
     let context = egui::Context::default();
     let mut app = App::new(&context, true);
     app.fixture(screen, screen == "empty")?;
+    app.capture_preferences(&context, language, theme);
     let mut raster = Raster::new();
     let deadline = Instant::now() + Duration::from_secs(12);
     for frame in 0..4 {

@@ -247,3 +247,28 @@ fn settings_layout_settles() {
         assert_eq!(ui.repaint_delay, Duration::MAX);
     }
 }
+
+#[test]
+fn translated_settings_and_dark_palette_preserve_reading_state_and_settle() {
+    for language in Language::ALL {
+        let mut ui = ReaderUi::new(vec2(900.0, 620.0), 1.5);
+        ui.app.session.voice = "Installed voice fixture".into();
+        ui.app
+            .capture_preferences(&ui.ctx, language, storage::Theme::Dark);
+        ui.settle();
+        assert!(
+            ui.nodes
+                .iter()
+                .any(|node| node.label() == Some(language.text("Settings")))
+        );
+        assert!(
+            ui.nodes
+                .iter()
+                .any(|node| node.label() == Some(language.text("Done")))
+        );
+        assert!(ui.ctx.style().visuals.dark_mode);
+        assert_eq!(ui.app.cursor, 1);
+        assert_eq!(ui.app.session.voice, "Installed voice fixture");
+        assert_eq!(ui.repaint_delay, Duration::MAX);
+    }
+}

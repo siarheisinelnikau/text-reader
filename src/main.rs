@@ -36,16 +36,29 @@ fn main() -> anyhow::Result<()> {
     let result = if args.get(1).is_some_and(|s| s == "--screenshot") {
         anyhow::ensure!(
             args.len() >= 3,
-            "Usage: --screenshot ABSOLUTE.png [--screen reader|bookmarks|settings|empty] [--width 1180] [--height 820] [--scale 1]"
+            "Usage: --screenshot ABSOLUTE.png [--screen reader|bookmarks|settings|empty] [--width 1180] [--height 820] [--scale 1] [--language en|ru|fr|de|es|it] [--theme light|dark]"
         );
         let mut screen = "reader";
         let mut width = 1180;
         let mut height = 820;
         let mut scale = 1.0;
+        let mut language = text_reader::i18n::Language::English;
+        let mut theme = text_reader::storage::Theme::Light;
         let mut index = 3;
         while index < args.len() {
             anyhow::ensure!(index + 1 < args.len(), "Missing option value");
             match args[index].as_str() {
+                "--language" => {
+                    language = text_reader::i18n::Language::from_code(&args[index + 1])
+                        .ok_or_else(|| anyhow::anyhow!("Unknown language: {}", args[index + 1]))?
+                }
+                "--theme" => {
+                    theme = match args[index + 1].as_str() {
+                        "light" => text_reader::storage::Theme::Light,
+                        "dark" => text_reader::storage::Theme::Dark,
+                        value => anyhow::bail!("Unknown theme: {value}"),
+                    }
+                }
                 "--screen" => screen = &args[index + 1],
                 "--width" => width = args[index + 1].parse()?,
                 "--height" => height = args[index + 1].parse()?,
@@ -54,7 +67,15 @@ fn main() -> anyhow::Result<()> {
             }
             index += 2;
         }
-        desktop::capture(std::path::Path::new(&args[2]), screen, width, height, scale)
+        desktop::capture(
+            std::path::Path::new(&args[2]),
+            screen,
+            width,
+            height,
+            scale,
+            language,
+            theme,
+        )
     } else if args.get(1).is_some_and(|s| s == "--diagnose") {
         anyhow::ensure!(args.len() == 3, "Usage: --diagnose ABSOLUTE.json");
         desktop::run(Some(args[2].clone().into()), None)

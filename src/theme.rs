@@ -1,33 +1,71 @@
 use egui::{Color32, CornerRadius, FontFamily, FontId, Stroke, TextStyle};
 
-pub const INK: Color32 = Color32::from_rgb(30, 49, 55);
-pub const MUTED: Color32 = Color32::from_rgb(101, 118, 124);
+const INK: Color32 = Color32::from_rgb(30, 49, 55);
+const MUTED: Color32 = Color32::from_rgb(101, 118, 124);
 pub const ACCENT: Color32 = Color32::from_rgb(16, 116, 105);
-pub const TINT: Color32 = Color32::from_rgb(226, 243, 237);
-pub const CANVAS: Color32 = Color32::from_rgb(246, 247, 249);
-pub const LINE: Color32 = Color32::from_rgb(226, 232, 234);
+const TINT: Color32 = Color32::from_rgb(226, 243, 237);
+const CANVAS: Color32 = Color32::from_rgb(246, 247, 249);
+const LINE: Color32 = Color32::from_rgb(226, 232, 234);
 
-pub fn apply(ctx: &egui::Context) {
+pub struct Palette {
+    pub ink: Color32,
+    pub muted: Color32,
+    pub accent: Color32,
+    pub tint: Color32,
+    pub canvas: Color32,
+    pub line: Color32,
+    pub surface: Color32,
+    pub error: Color32,
+}
+pub fn palette(theme: text_reader::storage::Theme) -> Palette {
+    match theme {
+        text_reader::storage::Theme::Light => Palette {
+            ink: INK,
+            muted: MUTED,
+            accent: ACCENT,
+            tint: TINT,
+            canvas: CANVAS,
+            line: LINE,
+            surface: Color32::WHITE,
+            error: Color32::from_rgb(163, 35, 43),
+        },
+        text_reader::storage::Theme::Dark => Palette {
+            ink: Color32::from_rgb(230, 239, 239),
+            muted: Color32::from_rgb(167, 186, 190),
+            accent: Color32::from_rgb(104, 218, 193),
+            tint: Color32::from_rgb(31, 66, 61),
+            canvas: Color32::from_rgb(18, 27, 31),
+            line: Color32::from_rgb(53, 70, 76),
+            surface: Color32::from_rgb(26, 38, 43),
+            error: Color32::from_rgb(255, 151, 151),
+        },
+    }
+}
+pub fn apply(ctx: &egui::Context, theme: text_reader::storage::Theme) {
+    let palette = palette(theme);
     let mut style = egui::Style {
-        visuals: egui::Visuals::light(),
+        visuals: match theme {
+            text_reader::storage::Theme::Light => egui::Visuals::light(),
+            text_reader::storage::Theme::Dark => egui::Visuals::dark(),
+        },
         ..Default::default()
     };
-    style.visuals.override_text_color = Some(INK);
-    style.visuals.panel_fill = Color32::WHITE;
-    style.visuals.window_fill = Color32::WHITE;
-    style.visuals.faint_bg_color = CANVAS;
-    style.visuals.extreme_bg_color = CANVAS;
-    style.visuals.selection.bg_fill = TINT;
-    style.visuals.selection.stroke = Stroke::new(1.0, ACCENT);
-    style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, LINE);
-    style.visuals.widgets.inactive.bg_fill = Color32::from_rgb(224, 233, 234);
-    style.visuals.widgets.inactive.weak_bg_fill = Color32::WHITE;
-    style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, LINE);
-    style.visuals.widgets.hovered.bg_fill = TINT;
-    style.visuals.widgets.hovered.weak_bg_fill = TINT;
-    style.visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, ACCENT);
-    style.visuals.widgets.active.bg_fill = TINT;
-    style.visuals.widgets.active.weak_bg_fill = TINT;
+    style.visuals.override_text_color = Some(palette.ink);
+    style.visuals.panel_fill = palette.surface;
+    style.visuals.window_fill = palette.surface;
+    style.visuals.faint_bg_color = palette.canvas;
+    style.visuals.extreme_bg_color = palette.canvas;
+    style.visuals.selection.bg_fill = palette.tint;
+    style.visuals.selection.stroke = Stroke::new(1.0, palette.accent);
+    style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, palette.line);
+    style.visuals.widgets.inactive.bg_fill = palette.line;
+    style.visuals.widgets.inactive.weak_bg_fill = palette.surface;
+    style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, palette.line);
+    style.visuals.widgets.hovered.bg_fill = palette.tint;
+    style.visuals.widgets.hovered.weak_bg_fill = palette.tint;
+    style.visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, palette.accent);
+    style.visuals.widgets.active.bg_fill = palette.tint;
+    style.visuals.widgets.active.weak_bg_fill = palette.tint;
     style.visuals.window_corner_radius = CornerRadius::same(16);
     for widget in [
         &mut style.visuals.widgets.inactive,
@@ -57,6 +95,9 @@ pub fn apply(ctx: &egui::Context) {
         FontId::new(12.0, FontFamily::Proportional),
     );
     ctx.set_style(style);
+}
+
+pub fn load_fonts(ctx: &egui::Context) {
     // Read once before opening a window; no font-file I/O occurs during frames.
     if let Some(root) = std::env::var_os("WINDIR")
         && let Ok(bytes) = std::fs::read(std::path::PathBuf::from(root).join("Fonts/segoeui.ttf"))
