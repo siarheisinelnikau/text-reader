@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
         let mut square_sum = 0f64;
         let mut peak = 0i32;
         let mut nonzero = 0usize;
-        for pair in pcm.chunks_exact(2) {
+        for pair in pcm.as_chunks::<2>().0 {
             let sample = i16::from_le_bytes([pair[0], pair[1]]) as i32;
             square_sum += (sample as f64).powi(2);
             peak = peak.max(sample.abs());

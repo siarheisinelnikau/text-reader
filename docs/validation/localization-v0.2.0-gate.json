@@ -11,7 +11,7 @@
       16
     ]
   },
-  "process_id": 39892,
+  "process_id": 35484,
   "profile": "optimized release required",
   "repaint_causes": {
     "C:\\Users\\user\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\egui-0.33.3\\src\\containers\\scroll_area.rs:1448 ": 1
@@ -28,23 +28,23 @@
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0004964,
+      "seconds": 5.0003111,
       "settled": true,
       "state": "visible_idle",
       "state_valid": true
     },
     {
-      "cpu_seconds": 0.015625,
+      "cpu_seconds": 0.0,
       "layout_ms": 0.0,
       "layouts": 0,
       "observed_visible": false,
-      "percent_of_one_core": 0.31249729377343594,
+      "percent_of_one_core": 0.0,
       "present_ms": 0.0,
       "presents": 0,
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0000433,
+      "seconds": 5.0004999,
       "settled": true,
       "state": "minimized_idle",
       "state_valid": true
@@ -60,7 +60,7 @@
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0000688,
+      "seconds": 5.0002006,
       "settled": true,
       "state": "restored_idle",
       "state_valid": true
@@ -69,11 +69,11 @@
   "scenario": "isolated populated fixture; no worker/network/audio tasks; no input automation",
   "scope": "idle/minimized/restore scheduling and CPU plus native icon assignment; not perceived interaction smoothness or GPU telemetry",
   "totals": {
-    "layout_ms": 2.4965,
+    "layout_ms": 3.113,
     "layouts": 4,
-    "present_ms": 6.067199999999999,
+    "present_ms": 4.7257,
     "presents": 4,
-    "raster_ms": 13.660099999999998,
+    "raster_ms": 15.330000000000002,
     "rasters": 4,
     "retained_blits": 0
   },
@@ -105,11 +105,11 @@
     "sechost.dll",
     "crypt32.dll",
     "bcryptprimitives.dll",
-    "imm32.dll",
     "secur32.dll",
+    "imm32.dll",
     "ws2_32.dll",
-    "dwmapi.dll",
     "uxtheme.dll",
+    "dwmapi.dll",
     "SSPICLI.DLL",
     "MSCTF.dll",
     "kernel.appcore.dll",
