@@ -8,6 +8,7 @@ use std::{
 };
 use text_reader::{
     document::Document,
+    i18n::{Language, Message},
     playback::{Audio, Player, State, Voice},
     speech::Sapi,
     storage::{self, Bookmark, Session},
@@ -22,9 +23,9 @@ enum SpeechCommand {
     Quit,
 }
 enum FileCommand {
-    Open,
-    Paste(String),
-    Export(Arc<Document>, String, i32),
+    Open(Language),
+    Paste(String, Language),
+    Export(Arc<Document>, String, i32, Language),
 }
 enum NetCommand {
     Check(bool),
@@ -47,7 +48,7 @@ enum Event {
     Saved(Result<(), String>),
     Check(bool, Result<Option<Update>, String>),
     Progress(&'static str, f32),
-    FileDone(Result<String, String>),
+    FileDone(Result<Message, String>),
     Downloaded(Result<Prepared, String>),
     Install(Result<(), String>),
 }
@@ -70,8 +71,8 @@ pub struct App {
     paste_open: bool,
     paste: String,
     bookmark_label: String,
-    message: String,
-    update_message: String,
+    message: Message,
+    update_message: Message,
     available: Option<Update>,
     net_busy: bool,
     file_busy: bool,
@@ -99,7 +100,8 @@ pub struct App {
 impl App {
     pub fn new(ctx: &egui::Context, capture: bool) -> Self {
         crate::diagnostics::event("CPU renderer selected; constructing reader");
-        crate::theme::apply(ctx);
+        crate::theme::apply(ctx, storage::Theme::default());
+        crate::theme::load_fonts(ctx);
         let (tx, events) = mpsc::channel();
         let (speech, speech_rx) = mpsc::sync_channel(16);
         let (files, file_rx) = mpsc::sync_channel(2);
@@ -181,14 +183,14 @@ impl App {
                 std::thread::spawn(move || {
                     while let Ok(command) = file_rx.recv() {
                         match command {
-                            FileCommand::Open => {
+                            FileCommand::Open(language) => {
                                 let result = (|| -> anyhow::Result<Option<Document>> {
                                     let Some(path) = rfd::FileDialog::new()
                                         .add_filter(
-                                            "Readable documents",
+                                            language.text("Readable documents"),
                                             &["txt", "md", "docx", "epub"],
                                         )
-                                        .add_filter("All files", &["*"])
+                                        .add_filter(language.text("All files"), &["*"])
                                         .pick_file()
                                     else {
                                         return Ok(None);
@@ -201,19 +203,22 @@ impl App {
                                     Event::Document(result.map_err(|e| format!("{e:#}"))),
                                 );
                             }
-                            FileCommand::Paste(text) => publish(
+                            FileCommand::Paste(text, language) => publish(
                                 &tx,
                                 &ctx,
                                 Event::Document(
-                                    Document::from_text("Pasted document".into(), text)
-                                        .map(Some)
-                                        .map_err(|e| format!("{e:#}")),
+                                    Document::from_text(
+                                        language.text("Pasted document").into(),
+                                        text,
+                                    )
+                                    .map(Some)
+                                    .map_err(|e| format!("{e:#}")),
                                 ),
                             ),
-                            FileCommand::Export(doc, voice, rate) => {
-                                let result = (|| -> anyhow::Result<String> {
+                            FileCommand::Export(doc, voice, rate, language) => {
+                                let result = (|| -> anyhow::Result<Message> {
                                     let Some(path) = rfd::FileDialog::new()
-                                        .add_filter("PCM WAV audio", &["wav"])
+                                        .add_filter(language.text("PCM WAV audio"), &["wav"])
                                         .set_file_name("TextReader-audio.wav")
                                         .save_file()
                                     else {
@@ -243,7 +248,10 @@ impl App {
                                             }
                                         },
                                     )?;
-                                    Ok(format!("WAV saved to {}", path.display()))
+                                    Ok(Message::with(
+                                        "WAV saved to {path}",
+                                        &[("path", path.display().to_string())],
+                                    ))
                                 })();
                                 publish(
                                     &tx,
@@ -438,6 +446,7 @@ impl App {
                     match result {
                         Ok(s) => {
                             self.session = s;
+                            crate::theme::apply(ctx, self.session.theme);
                             if let Some(d) = &self.session.document {
                                 self.cursor = self
                                     .session
@@ -445,12 +454,15 @@ impl App {
                                     .get(&d.id)
                                     .map_or(0, |p| p.cursor)
                                     .min(d.chunks.len() - 1);
-                                self.message = format!("Restored {}", d.title);
+                                self.message = Message::with(
+                                    "Restored {title}",
+                                    &[("title", d.title.clone())],
+                                );
                                 self.scroll_to_cursor = true;
                             }
                         }
                         Err(e) => {
-                            self.message = e;
+                            self.message = Message::error(e);
                             self.load_failed = true;
                         }
                     }
@@ -463,7 +475,7 @@ impl App {
                         self.voices = v;
                         self.voice_ready = true;
                     }
-                    Err(e) => self.message = e,
+                    Err(e) => self.message = Message::error(e),
                 },
                 Event::Document(result) => {
                     self.file_busy = false;
@@ -476,14 +488,19 @@ impl App {
                                 .get(&doc.id)
                                 .map_or(0, |p| p.cursor)
                                 .min(doc.chunks.len() - 1);
-                            self.message =
-                                format!("Loaded {} — {} fragments", doc.title, doc.chunks.len());
+                            self.message = Message::with(
+                                "Loaded {title} — {count} passages",
+                                &[
+                                    ("title", doc.title.clone()),
+                                    ("count", doc.chunks.len().to_string()),
+                                ],
+                            );
                             self.session.document = Some(Arc::new(doc));
                             self.mark_dirty();
                             self.scroll_to_cursor = true;
                         }
                         Ok(None) => {}
-                        Err(e) => self.message = e,
+                        Err(e) => self.message = Message::error(e),
                     }
                 }
                 Event::Playback(epoch, cursor, state) if epoch == self.epoch => {
@@ -503,13 +520,13 @@ impl App {
                 }
                 Event::Playback(_, _, _) => {}
                 Event::SpeechError(e) => {
-                    self.message = e;
+                    self.message = Message::error(e);
                     self.state = State::Stopped;
                 }
                 Event::Saved(result) => {
                     self.saving = false;
                     if let Err(e) = result {
-                        self.message = e;
+                        self.message = Message::error(e);
                         self.closing = false;
                         self.installation = Installation::None;
                         self.net_busy = false;
@@ -521,16 +538,18 @@ impl App {
                     self.net_busy = false;
                     match result {
                         Ok(Some(update)) => {
-                            self.update_message =
-                                format!("Version {} is available.", update.version);
+                            self.update_message = Message::with(
+                                "Version {version} is available.",
+                                &[("version", update.version.clone())],
+                            );
                             self.message = self.update_message.clone();
                             self.available = Some(update);
                         }
                         Ok(None) => self.update_message = "You are up to date.".into(),
                         Err(e) => {
-                            self.update_message = e.clone();
+                            self.update_message = Message::error(e.clone());
                             if !startup {
-                                self.message = e;
+                                self.message = Message::error(e);
                             }
                         }
                     }
@@ -539,7 +558,7 @@ impl App {
                 Event::FileDone(result) => {
                     self.file_busy = false;
                     self.progress = None;
-                    self.message = result.unwrap_or_else(|e| e);
+                    self.message = result.unwrap_or_else(Message::error);
                 }
                 Event::Downloaded(result) => {
                     self.progress = None;
@@ -554,7 +573,7 @@ impl App {
                         Err(e) => {
                             self.net_busy = false;
                             self.installation = Installation::None;
-                            self.message = e;
+                            self.message = Message::error(e);
                         }
                     }
                 }
@@ -565,7 +584,7 @@ impl App {
                         Err(e) => {
                             self.installation = Installation::None;
                             self.closing = false;
-                            self.message = e;
+                            self.message = Message::error(e);
                         }
                     }
                 }
@@ -630,6 +649,17 @@ impl App {
     pub fn shutdown(&mut self) {
         self.cancel.store(true, Ordering::Relaxed);
         let _ = self.speech.try_send(SpeechCommand::Quit);
+    }
+
+    pub fn capture_preferences(
+        &mut self,
+        ctx: &egui::Context,
+        language: Language,
+        theme: storage::Theme,
+    ) {
+        self.session.language = language;
+        self.session.theme = theme;
+        crate::theme::apply(ctx, theme);
     }
 
     pub fn fixture(&mut self, screen: &str, empty: bool) -> anyhow::Result<()> {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::theme::{ACCENT, CANVAS, INK, LINE, MUTED, TINT};
+use crate::theme::ACCENT;
 use egui::{Color32, RichText, vec2};
 
 const PAGE_SIZE: usize = 5;
@@ -11,12 +11,23 @@ fn primary(text: &str) -> egui::Button<'_> {
 }
 
 fn caption(ui: &mut egui::Ui, text: &str) {
-    ui.label(RichText::new(text).size(11.0).strong().color(MUTED));
+    ui.label(
+        RichText::new(text)
+            .size(11.0)
+            .strong()
+            .color(ui.visuals().weak_text_color()),
+    );
 }
 
 impl App {
     fn open_document(&mut self) {
-        if self.loaded && !self.file_busy && self.files.try_send(FileCommand::Open).is_ok() {
+        if self.loaded
+            && !self.file_busy
+            && self
+                .files
+                .try_send(FileCommand::Open(self.session.language))
+                .is_ok()
+        {
             self.file_busy = true;
         }
     }
@@ -29,6 +40,8 @@ impl App {
     }
 
     pub fn draw(&mut self, ctx: &egui::Context) {
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
         if (self.settings || self.paste_open)
             && !egui::Popup::is_any_open(ctx)
             && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
@@ -54,7 +67,7 @@ impl App {
         egui::TopBottomPanel::top("header")
             .frame(
                 egui::Frame::new()
-                    .fill(Color32::WHITE)
+                    .fill(palette.surface)
                     .inner_margin(egui::Margin::symmetric(24, 15)),
             )
             .show(ctx, |ui| {
@@ -81,7 +94,7 @@ impl App {
                     ui.add_space(2.0);
                     ui.label(RichText::new("TextReader").size(22.0).strong());
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("Settings").clicked() {
+                        if ui.button(language.text("Settings")).clicked() {
                             self.settings = true;
                         }
                         if self.session.document.is_some()
@@ -93,7 +106,7 @@ impl App {
                                             self.installation,
                                             Installation::Downloading | Installation::Preparing
                                         ),
-                                    egui::Button::new("Export audio"),
+                                    egui::Button::new(language.text("Export audio")),
                                 )
                                 .clicked()
                         {
@@ -105,6 +118,7 @@ impl App {
                                     self.session.document.as_ref().unwrap().clone(),
                                     self.session.voice.clone(),
                                     self.session.rate,
+                                    self.session.language,
                                 ))
                                 .is_ok()
                             {
@@ -114,7 +128,7 @@ impl App {
                         if ui
                             .add_enabled(
                                 self.loaded && !self.file_busy,
-                                egui::Button::new("Paste text"),
+                                egui::Button::new(language.text("Paste text")),
                             )
                             .clicked()
                         {
@@ -123,7 +137,7 @@ impl App {
                         if ui
                             .add_enabled(
                                 self.loaded && !self.file_busy,
-                                egui::Button::new("Open document"),
+                                egui::Button::new(language.text("Open document")),
                             )
                             .clicked()
                         {
@@ -139,7 +153,7 @@ impl App {
             self.navigation(ctx);
         }
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(CANVAS).inner_margin(24))
+            .frame(egui::Frame::new().fill(palette.canvas).inner_margin(24))
             .show(ctx, |ui| {
                 if self.session.document.is_some() {
                     self.reading_page(ui);
@@ -151,45 +165,49 @@ impl App {
     }
 
     fn empty_page(&mut self, ui: &mut egui::Ui) {
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
         ui.add_space((ui.available_height() * 0.16).max(24.0));
         ui.vertical_centered(|ui| {
-            caption(ui,"YOUR WORDS, AT YOUR PACE");ui.add_space(16.0);
-            ui.label(RichText::new("Make room for reading.").size(38.0).strong());
+            caption(ui,language.text("YOUR WORDS, AT YOUR PACE"));ui.add_space(16.0);
+            ui.label(RichText::new(language.text("Make room for reading.")).size(38.0).strong());
             ui.add_space(12.0);
-            ui.label(RichText::new("Listen to a document, follow the words,\nand pick up right where you left off.").size(18.0).color(MUTED));
+            ui.label(RichText::new(language.text("Listen to a document, follow the words,\nand pick up right where you left off.")).size(18.0).color(palette.muted));
             ui.add_space(28.0);
             ui.horizontal(|ui| {
                 ui.add_space((ui.available_width()-310.0).max(0.0)/2.0);
-                if ui.add_enabled(self.loaded&&!self.file_busy,primary("Open document")).clicked(){self.open_document();}
-                if ui.add_enabled(self.loaded&&!self.file_busy,egui::Button::new("Paste some text").min_size(vec2(142.0,40.0))).clicked(){self.paste_open=true;}
+                if ui.add_enabled(self.loaded&&!self.file_busy,primary(language.text("Open document"))).clicked(){self.open_document();}
+                if ui.add_enabled(self.loaded&&!self.file_busy,egui::Button::new(language.text("Paste some text")).min_size(vec2(142.0,40.0))).clicked(){self.paste_open=true;}
             });
-            ui.add_space(24.0);ui.label(RichText::new("TXT   ·   Markdown   ·   DOCX   ·   EPUB").color(MUTED));
-            ui.add_space(8.0);ui.label(RichText::new("Read locally with the voices on your PC.").size(13.0).color(MUTED));
+            ui.add_space(24.0);ui.label(RichText::new("TXT   ·   Markdown   ·   DOCX   ·   EPUB").color(palette.muted));
+            ui.add_space(8.0);ui.label(RichText::new(language.text("Read locally with the voices on your PC.")).size(13.0).color(palette.muted));
         });
         self.notice(ui);
     }
 
     fn navigation(&mut self, ctx: &egui::Context) {
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
         let doc = self.session.document.clone().unwrap();
         egui::SidePanel::left("navigation")
             .resizable(false)
             .exact_width(242.0)
-            .frame(egui::Frame::new().fill(Color32::WHITE).inner_margin(20))
+            .frame(egui::Frame::new().fill(palette.surface).inner_margin(20))
             .show(ctx, |ui| {
                 ui.add_space(5.0);
-                caption(ui, "IN THIS DOCUMENT");
+                caption(ui, language.text("IN THIS DOCUMENT"));
                 ui.add_space(10.0);
                 ui.label(RichText::new(&doc.title).size(17.0).strong());
                 ui.add_space(20.0);
                 ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.bookmark_tab, false, "Contents");
-                    ui.selectable_value(&mut self.bookmark_tab, true, "Bookmarks");
+                    ui.selectable_value(&mut self.bookmark_tab, false, language.text("Contents"));
+                    ui.selectable_value(&mut self.bookmark_tab, true, language.text("Bookmarks"));
                 });
                 ui.add_space(12.0);
                 if self.bookmark_tab {
                     ui.add(
                         egui::TextEdit::singleline(&mut self.bookmark_label)
-                            .hint_text("Bookmark name (optional)")
+                            .hint_text(language.text("Bookmark name (optional)"))
                             .char_limit(100),
                     );
                 }
@@ -199,25 +217,28 @@ impl App {
                 let full = position.is_some_and(|p| p.bookmarks.len() >= 200);
                 if saved {
                     egui::Frame::new()
-                        .fill(TINT)
+                        .fill(palette.tint)
                         .corner_radius(8)
                         .show(ui, |ui| {
                             ui.add_sized(
                                 [ui.available_width(), 36.0],
-                                egui::Label::new(RichText::new("Passage saved").color(ACCENT)),
+                                egui::Label::new(
+                                    RichText::new(language.text("Passage saved"))
+                                        .color(palette.accent),
+                                ),
                             );
                         })
                         .response
-                        .on_hover_text("This passage is already in Bookmarks");
+                        .on_hover_text(language.text("This passage is already in Bookmarks"));
                 } else if ui
                     .add_enabled(
                         !full,
-                        egui::Button::new("Bookmark passage")
+                        egui::Button::new(language.text("Bookmark passage"))
                             .min_size(vec2(ui.available_width(), 36.0)),
                     )
-                    .on_hover_text("Save the highlighted passage in Bookmarks")
+                    .on_hover_text(language.text("Save the highlighted passage in Bookmarks"))
                     .on_disabled_hover_text(
-                        "Remove a bookmark before adding another (200 per document)",
+                        language.text("Remove a bookmark before adding another (200 per document)"),
                     )
                     .clicked()
                 {
@@ -233,13 +254,13 @@ impl App {
                             .saturating_sub(1);
                         for (n, chapter) in doc.chapters.iter().enumerate() {
                             let text = format!("{:02}  {}", n + 1, chapter.title);
-                            let button = egui::Button::new(
-                                RichText::new(text).size(14.0).color(if n == active {
-                                    ACCENT
+                            let button = egui::Button::new(RichText::new(text).size(14.0).color(
+                                if n == active {
+                                    palette.accent
                                 } else {
-                                    MUTED
-                                }),
-                            )
+                                    palette.muted
+                                },
+                            ))
                             .truncate()
                             .frame(false)
                             .selected(n == active)
@@ -257,7 +278,8 @@ impl App {
                             .unwrap_or_default();
                         if marks.is_empty() {
                             ui.label(
-                                RichText::new("Keep a place you want to return to.").color(MUTED),
+                                RichText::new(language.text("Keep a place you want to return to."))
+                                    .color(palette.muted),
                             );
                         }
                         let mut remove = None;
@@ -279,7 +301,7 @@ impl App {
                                 }
                                 if ui
                                     .add_sized([remove_width, 36.0], egui::Button::new("×"))
-                                    .on_hover_text("Remove bookmark")
+                                    .on_hover_text(language.text("Remove bookmark"))
                                     .clicked()
                                 {
                                     remove = Some(index);
@@ -322,6 +344,8 @@ impl App {
     }
 
     fn reading_page(&mut self, ui: &mut egui::Ui) {
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
         let doc = self.session.document.clone().unwrap();
         if self.scroll_to_cursor {
             self.page = self.cursor / PAGE_SIZE;
@@ -340,20 +364,20 @@ impl App {
                 .layout(egui::Layout::top_down(egui::Align::Min)),
             |ui| {
                 ui.set_max_width(width);
-                caption(ui, "READING ROOM");
+                caption(ui, language.text("READING ROOM"));
                 ui.add_space(8.0);
                 ui.label(RichText::new(&doc.title).size(30.0).strong());
                 ui.add_space(4.0);
                 ui.label(
-                    RichText::new("Take your time. Your place is saved.")
+                    RichText::new(language.text("Take your time. Your place is saved."))
                         .size(14.0)
-                        .color(MUTED),
+                        .color(palette.muted),
                 );
                 ui.add_space(20.0);
                 egui::Frame::new()
-                    .fill(Color32::WHITE)
+                    .fill(palette.surface)
                     .corner_radius(16)
-                    .stroke(egui::Stroke::new(1.0, LINE))
+                    .stroke(egui::Stroke::new(1.0, palette.line))
                     .inner_margin(24)
                     .show(ui, |ui| {
                         ui.set_min_width((ui.available_width()).max(100.0));
@@ -376,7 +400,11 @@ impl App {
                                     }
                                     let selected = i == self.cursor;
                                     let frame = egui::Frame::new()
-                                        .fill(if selected { TINT } else { Color32::TRANSPARENT })
+                                        .fill(if selected {
+                                            palette.tint
+                                        } else {
+                                            Color32::TRANSPARENT
+                                        })
                                         .corner_radius(8)
                                         .inner_margin(egui::Margin::symmetric(12, 6));
                                     frame.show(ui, |ui| {
@@ -389,11 +417,7 @@ impl App {
                                                         .trim_start(),
                                                 )
                                                 .size(self.session.font_size + 1.0)
-                                                .color(if selected {
-                                                    INK
-                                                } else {
-                                                    Color32::from_rgb(67, 83, 90)
-                                                }),
+                                                .color(palette.ink),
                                             )
                                             .wrap()
                                             .sense(egui::Sense::click()),
@@ -413,19 +437,26 @@ impl App {
                     if ui
                         .add_enabled(
                             self.page > 0,
-                            egui::Button::new("← Previous page").frame(false),
+                            egui::Button::new(language.text("← Previous page")).frame(false),
                         )
                         .clicked()
                     {
                         self.seek((self.page - 1) * PAGE_SIZE);
                     }
                     ui.label(
-                        RichText::new(format!("Page {} of {pages}", self.page + 1)).color(MUTED),
+                        RichText::new(language.format(
+                            "Page {page} of {total}",
+                            &[
+                                ("page", (self.page + 1).to_string()),
+                                ("total", pages.to_string()),
+                            ],
+                        ))
+                        .color(palette.muted),
                     );
                     if ui
                         .add_enabled(
                             self.page + 1 < pages,
-                            egui::Button::new("Next page →").frame(false),
+                            egui::Button::new(language.text("Next page →")).frame(false),
                         )
                         .clicked()
                     {
@@ -439,11 +470,13 @@ impl App {
     }
 
     fn player_bar(&mut self, ctx: &egui::Context) {
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
         let ready = self.loaded && self.voice_ready && !self.closing;
         egui::TopBottomPanel::bottom("player")
             .frame(
                 egui::Frame::new()
-                    .fill(Color32::WHITE)
+                    .fill(palette.surface)
                     .inner_margin(egui::Margin::symmetric(24, 15)),
             )
             .show(ctx, |ui| {
@@ -460,15 +493,24 @@ impl App {
                     ui.vertical(|ui| {
                         ui.label(RichText::new(title).strong().size(13.0));
                         ui.label(
-                            RichText::new(format!("Passage {} of {count}", self.cursor + 1))
-                                .color(MUTED)
-                                .size(12.0),
+                            RichText::new(language.format(
+                                "Passage {passage} of {total}",
+                                &[
+                                    ("passage", (self.cursor + 1).to_string()),
+                                    ("total", count.to_string()),
+                                ],
+                            ))
+                            .color(palette.muted)
+                            .size(12.0),
                         );
                     });
                     ui.add_space(20.0);
                     if ui
-                        .add_enabled(ready, egui::Button::new("Previous").frame(false))
-                        .on_hover_text("Previous paragraph")
+                        .add_enabled(
+                            ready,
+                            egui::Button::new(language.text("Previous")).frame(false),
+                        )
+                        .on_hover_text(language.text("Previous paragraph"))
                         .clicked()
                     {
                         let target = self
@@ -480,20 +522,20 @@ impl App {
                         self.seek(target);
                     }
                     let label = match self.state {
-                        State::Playing => "Pause",
-                        State::Paused => "Resume",
-                        _ => "Play",
+                        State::Playing => language.text("Pause"),
+                        State::Paused => language.text("Resume"),
+                        _ => language.text("Play"),
                     };
                     if ui
                         .add_enabled(ready, primary(label))
-                        .on_hover_text("Space to play or pause")
+                        .on_hover_text(language.text("Space to play or pause"))
                         .clicked()
                     {
                         self.toggle_playback();
                     }
                     if ui
-                        .add_enabled(ready, egui::Button::new("Next").frame(false))
-                        .on_hover_text("Next paragraph")
+                        .add_enabled(ready, egui::Button::new(language.text("Next")).frame(false))
+                        .on_hover_text(language.text("Next paragraph"))
                         .clicked()
                     {
                         let target = self
@@ -507,7 +549,7 @@ impl App {
                     if ui
                         .add_enabled(
                             ready && matches!(self.state, State::Playing | State::Paused),
-                            egui::Button::new("Stop").frame(false),
+                            egui::Button::new(language.text("Stop")).frame(false),
                         )
                         .clicked()
                     {
@@ -516,49 +558,58 @@ impl App {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui
                             .button("Aa")
-                            .on_hover_text("Text and voice settings")
+                            .on_hover_text(language.text("Text and voice settings"))
                             .clicked()
                         {
                             self.settings = true;
                         }
-                        ui.checkbox(&mut self.follow, "Follow")
-                            .on_hover_text("Follow the current passage");
+                        ui.checkbox(&mut self.follow, language.text("Follow"))
+                            .on_hover_text(language.text("Follow the current passage"));
                     });
                 });
             });
     }
 
     fn notice(&mut self, ui: &mut egui::Ui) {
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
         if self.file_busy {
-            ui.label(RichText::new("Working on your document…").color(MUTED));
+            ui.label(
+                RichText::new(language.text("Working on your document…")).color(palette.muted),
+            );
         }
         if let Some((label, progress)) = self.progress {
-            ui.add(
-                egui::ProgressBar::new(progress)
-                    .text(format!("{label} · {:.0}%", progress * 100.0)),
-            );
-            if label == "Exporting WAV" && ui.button("Cancel export").clicked() {
+            ui.add(egui::ProgressBar::new(progress).text(format!(
+                "{} · {:.0}%",
+                language.text(label),
+                progress * 100.0
+            )));
+            if label == "Exporting WAV" && ui.button(language.text("Cancel export")).clicked() {
                 self.cancel.store(true, Ordering::Relaxed);
             }
         }
         if !self.message.is_empty() {
             ui.add_space(8.0);
-            ui.label(RichText::new(&self.message).size(12.0).color(MUTED));
+            ui.label(
+                RichText::new(self.message.render(language))
+                    .size(12.0)
+                    .color(palette.muted),
+            );
         }
         if self.load_failed {
-            ui.colored_label(Color32::DARK_RED,"Saved data could not be read. The original file has been preserved; saving is disabled for this launch.");
+            ui.colored_label(palette.error,language.text("Saved data could not be read. The original file has been preserved; saving is disabled for this launch."));
         }
         if self.save_failed {
             ui.horizontal(|ui| {
                 ui.colored_label(
-                    Color32::DARK_RED,
-                    "Your latest changes have not been saved.",
+                    palette.error,
+                    language.text("Your latest changes have not been saved."),
                 );
-                if ui.button("Retry saving").clicked() {
+                if ui.button(language.text("Retry saving")).clicked() {
                     self.save_failed = false;
                     self.request_save();
                 }
-                if ui.button("Close without saving").clicked() {
+                if ui.button(language.text("Close without saving")).clicked() {
                     self.dirty = false;
                     self.closing = true;
                     self.installation = Installation::None;
@@ -568,8 +619,11 @@ impl App {
     }
 
     fn dialogs(&mut self, ctx: &egui::Context) {
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
         let mut open = self.settings;
-        egui::Window::new("Settings")
+        egui::Window::new(language.text("Settings"))
+            .id(egui::Id::new("settings-window"))
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
@@ -592,8 +646,8 @@ impl App {
                     ui.horizontal(|ui| {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui
-                                .add(primary("Done"))
-                                .on_hover_text("Close settings (Esc)")
+                                .add(primary(language.text("Done")))
+                                .on_hover_text(language.text("Close settings (Esc)"))
                                 .clicked()
                             {
                                 ui.close_kind(egui::UiKind::Window);
@@ -604,16 +658,20 @@ impl App {
             });
         self.settings = open;
         let mut open = self.paste_open;
-        egui::Window::new("Paste text")
+        egui::Window::new(language.text("Paste text"))
+            .id(egui::Id::new("paste-window"))
             .open(&mut open)
             .default_width(646.0)
             .frame(egui::Frame::window(&ctx.style()))
             .show(ctx, |ui| {
                 egui::Frame::new().inner_margin(18).show(ui, |ui| {
-                    ui.heading("What would you like to hear?");
+                    ui.heading(language.text("What would you like to hear?"));
                     ui.label(
-                        RichText::new("Paste your text below. Blank lines separate paragraphs.")
-                            .color(MUTED),
+                        RichText::new(
+                            language
+                                .text("Paste your text below. Blank lines separate paragraphs."),
+                        )
+                        .color(palette.muted),
                     );
                     egui::ScrollArea::vertical()
                         .max_height(300.0)
@@ -622,25 +680,28 @@ impl App {
                                 egui::TextEdit::multiline(&mut self.paste)
                                     .desired_width(f32::INFINITY)
                                     .desired_rows(12)
-                                    .hint_text("Your next good read starts here…")
+                                    .hint_text(language.text("Your next good read starts here…"))
                                     .char_limit(4 * 1024 * 1024),
                             );
                         });
                     ui.horizontal(|ui| {
                         if ui
-                            .add_enabled(!self.file_busy, primary("Read this text"))
+                            .add_enabled(!self.file_busy, primary(language.text("Read this text")))
                             .clicked()
                             && self
                                 .files
-                                .try_send(FileCommand::Paste(self.paste.clone()))
+                                .try_send(FileCommand::Paste(
+                                    self.paste.clone(),
+                                    self.session.language,
+                                ))
                                 .is_ok()
                         {
                             self.file_busy = true;
                             self.paste_open = false;
                         }
                         if ui
-                            .button("Cancel")
-                            .on_hover_text("Close without clearing your text (Esc)")
+                            .button(language.text("Cancel"))
+                            .on_hover_text(language.text("Close without clearing your text (Esc)"))
                             .clicked()
                         {
                             ui.close_kind(egui::UiKind::Window);
@@ -652,11 +713,63 @@ impl App {
     }
 
     fn settings_contents(&mut self, ui: &mut egui::Ui) {
-        ui.label(RichText::new("Choose a voice and a comfortable text size.").color(MUTED));
+        let language = self.session.language;
+        let palette = crate::theme::palette(self.session.theme);
+        ui.horizontal_wrapped(|ui| {
+            ui.label(language.text("Language"));
+            let previous = self.session.language;
+            egui::ComboBox::from_id_salt("interface-language")
+                .selected_text(previous.native_name())
+                .show_ui(ui, |ui| {
+                    for choice in Language::ALL {
+                        ui.selectable_value(
+                            &mut self.session.language,
+                            choice,
+                            choice.native_name(),
+                        );
+                    }
+                });
+            if previous != self.session.language {
+                self.mark_dirty();
+            }
+        });
+        ui.label(
+            RichText::new(
+                language
+                    .text("Interface language does not change your document or installed voice."),
+            )
+            .size(12.0)
+            .color(palette.muted),
+        );
+        ui.horizontal_wrapped(|ui| {
+            ui.label(language.text("Appearance"));
+            let previous = self.session.theme;
+            ui.selectable_value(
+                &mut self.session.theme,
+                storage::Theme::Light,
+                language.text("Light"),
+            );
+            ui.selectable_value(
+                &mut self.session.theme,
+                storage::Theme::Dark,
+                language.text("Dark"),
+            );
+            if previous != self.session.theme {
+                crate::theme::apply(ui.ctx(), self.session.theme);
+                self.mark_dirty();
+            }
+        });
+        ui.add_space(14.0);
+        ui.separator();
+        ui.add_space(14.0);
+        ui.label(
+            RichText::new(language.text("Choose a voice and a comfortable text size."))
+                .color(palette.muted),
+        );
         ui.add_space(12.0);
-        caption(ui, "LISTENING");
+        caption(ui, language.text("LISTENING"));
         ui.add_space(4.0);
-        ui.label("Voice");
+        ui.label(language.text("Voice"));
         let old = self.session.voice.clone();
         let name = self
             .voices
@@ -664,9 +777,9 @@ impl App {
             .find(|v| v.id == self.session.voice)
             .map_or(
                 if self.session.voice.is_empty() {
-                    "System default"
+                    language.text("System default")
                 } else {
-                    "Saved voice unavailable"
+                    language.text("Saved voice unavailable")
                 },
                 |v| v.name.as_str(),
             );
@@ -674,24 +787,33 @@ impl App {
             .width(400.0)
             .selected_text(name)
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.session.voice, String::new(), "System default");
+                ui.selectable_value(
+                    &mut self.session.voice,
+                    String::new(),
+                    language.text("System default"),
+                );
                 for voice in &self.voices {
                     ui.selectable_value(&mut self.session.voice, voice.id.clone(), &voice.name);
                 }
             });
         ui.label(
-            RichText::new("Uses voices installed on this PC.")
+            RichText::new(language.text("Uses voices installed on this PC."))
                 .size(12.0)
-                .color(MUTED),
+                .color(palette.muted),
         );
-        let rate =
-            ui.add(egui::Slider::new(&mut self.session.rate, -10..=10).text("Reading speed"));
+        let rate = ui.add(
+            egui::Slider::new(&mut self.session.rate, -10..=10)
+                .text(language.text("Reading speed")),
+        );
         if old != self.session.voice || rate.changed() {
             self.stop();
             self.mark_dirty();
         }
         if ui
-            .add(egui::Slider::new(&mut self.session.font_size, 14.0..=32.0).text("Text size"))
+            .add(
+                egui::Slider::new(&mut self.session.font_size, 14.0..=32.0)
+                    .text(language.text("Text size")),
+            )
             .changed()
         {
             self.mark_dirty();
@@ -699,11 +821,14 @@ impl App {
         ui.add_space(14.0);
         ui.separator();
         ui.add_space(14.0);
-        caption(ui, "UPDATES");
+        caption(ui, language.text("UPDATES"));
         ui.horizontal(|ui| {
             ui.label(concat!("TextReader ", env!("CARGO_PKG_VERSION")));
             if ui
-                .add_enabled(!self.net_busy, egui::Button::new("Check for updates"))
+                .add_enabled(
+                    !self.net_busy,
+                    egui::Button::new(language.text("Check for updates")),
+                )
                 .clicked()
             {
                 self.check_updates(false);
@@ -712,13 +837,17 @@ impl App {
         if ui
             .checkbox(
                 &mut self.session.startup_updates,
-                "Check for updates on startup",
+                language.text("Check for updates on startup"),
             )
             .changed()
         {
             self.mark_dirty();
         }
-        ui.label(RichText::new(&self.update_message).size(12.0).color(MUTED));
+        ui.label(
+            RichText::new(self.update_message.render(language))
+                .size(12.0)
+                .color(palette.muted),
+        );
         if let Some(update) = self.available.clone()
             && ui
                 .add_enabled(
@@ -727,7 +856,7 @@ impl App {
                         && !self.save_failed
                         && !self.load_failed
                         && !self.closing,
-                    primary("Download and install"),
+                    primary(language.text("Download and install")),
                 )
                 .clicked()
             && self.network.try_send(NetCommand::Install(update)).is_ok()
@@ -740,18 +869,18 @@ impl App {
         ui.add_space(14.0);
         ui.separator();
         ui.add_space(14.0);
-        caption(ui, "YOUR DATA");
-        ui.label(RichText::new("Your last document, bookmarks and preferences stay on this PC. Original documents are never changed.").color(MUTED).size(13.0));
+        caption(ui, language.text("YOUR DATA"));
+        ui.label(RichText::new(language.text("Your last document, bookmarks and preferences stay on this PC. Original documents are never changed.")).color(palette.muted).size(13.0));
         ui.add(
             egui::Label::new(
                 RichText::new(storage::data_dir().display().to_string())
                     .monospace()
                     .size(11.0)
-                    .color(MUTED),
+                    .color(palette.muted),
             )
             .wrap(),
         );
-        ui.hyperlink_to("Project and updates", updater::REPOSITORY);
+        ui.hyperlink_to(language.text("Project and updates"), updater::REPOSITORY);
     }
 }
 

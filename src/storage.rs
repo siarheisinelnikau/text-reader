@@ -1,4 +1,5 @@
 use crate::document::Document;
+use crate::i18n::Language;
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -16,9 +17,19 @@ pub struct Position {
     pub cursor: usize,
     pub bookmarks: Vec<Bookmark>,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    #[default]
+    Light,
+    Dark,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Session {
+    pub language: Language,
+    pub theme: Theme,
     pub startup_updates: bool,
     pub voice: String,
     pub rate: i32,
@@ -29,6 +40,8 @@ pub struct Session {
 impl Default for Session {
     fn default() -> Self {
         Self {
+            language: Language::default(),
+            theme: Theme::default(),
             startup_updates: true,
             voice: String::new(),
             rate: 0,
@@ -132,6 +145,29 @@ pub fn save(dir: &Path, session: &Session) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn old_sessions_keep_voice_positions_and_receive_appearance_defaults() {
+        let session: Session = serde_json::from_str(r#"{"voice":"SAPI-fixture","rate":3,"startup_updates":false,"positions":{"book":{"cursor":2,"bookmarks":[]}}}"#).unwrap();
+        assert_eq!(session.language, Language::English);
+        assert_eq!(session.theme, Theme::Light);
+        assert_eq!(session.voice, "SAPI-fixture");
+        assert_eq!(session.positions["book"].cursor, 2);
+        assert!(!session.startup_updates);
+    }
+    #[test]
+    fn language_and_theme_round_trip_independently_of_voice() {
+        let session = Session {
+            language: Language::Italian,
+            theme: Theme::Dark,
+            voice: "Russian SAPI fixture".into(),
+            ..Session::default()
+        };
+        let restored: Session =
+            serde_json::from_str(&serde_json::to_string(&session).unwrap()).unwrap();
+        assert_eq!(restored.language, Language::Italian);
+        assert_eq!(restored.theme, Theme::Dark);
+        assert_eq!(restored.voice, "Russian SAPI fixture");
+    }
     #[test]
     fn isolated_persistence_and_corruption() {
         let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
