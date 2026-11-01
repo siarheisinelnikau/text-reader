@@ -12,6 +12,7 @@ TextReader now lets you choose your interface language and switch between a ligh
 ## Improved
 
 - Existing session files receive English/light defaults while preserving voices, positions, bookmarks and the startup-update preference.
+- Explicit Light / Dark preferences remain active when Windows reports a different system theme.
 - Status messages retain structured parameters so switching language also updates an existing status without rewriting document titles or paths.
 - Screenshot and diagnostic scripts obtain the executable version from Cargo.toml.
 
