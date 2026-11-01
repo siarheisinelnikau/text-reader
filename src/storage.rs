@@ -20,9 +20,10 @@ pub struct Position {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Theme {
-    #[default]
-    Light,
     Dark,
+    #[default]
+    #[serde(other)]
+    Light,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -167,6 +168,13 @@ mod tests {
         assert_eq!(restored.language, Language::Italian);
         assert_eq!(restored.theme, Theme::Dark);
         assert_eq!(restored.voice, "Russian SAPI fixture");
+        let future: Session = serde_json::from_str(
+            r#"{"language":"future","theme":"future","voice":"Keep this voice"}"#,
+        )
+        .unwrap();
+        assert_eq!(future.language, Language::English);
+        assert_eq!(future.theme, Theme::Light);
+        assert_eq!(future.voice, "Keep this voice");
     }
     #[test]
     fn isolated_persistence_and_corruption() {

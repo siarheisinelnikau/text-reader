@@ -5,19 +5,20 @@ use std::{collections::HashMap, sync::LazyLock};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Language {
-    #[default]
-    English,
     Russian,
     French,
     German,
     Spanish,
     Italian,
+    #[default]
+    #[serde(other)]
+    English,
 }
 
-static CATALOG: LazyLock<HashMap<&'static str, [&'static str; 6]>> = LazyLock::new(|| {
-    let rows: Vec<[&'static str; 6]> = serde_json::from_str(include_str!("locales.json"))
+static CATALOG: LazyLock<HashMap<String, [String; 6]>> = LazyLock::new(|| {
+    let rows: Vec<[String; 6]> = serde_json::from_str(include_str!("locales.json"))
         .expect("the embedded UI catalog is valid");
-    rows.into_iter().map(|row| (row[0], row)).collect()
+    rows.into_iter().map(|row| (row[0].clone(), row)).collect()
 });
 
 impl Language {
@@ -40,13 +41,36 @@ impl Language {
         }
     }
     pub fn text(self, key: &'static str) -> &'static str {
-        CATALOG.get(key).map_or(key, |row| row[self as usize])
+        CATALOG.get(key).map_or(key, |row| {
+            row[match self {
+                Self::English => 0,
+                Self::Russian => 1,
+                Self::French => 2,
+                Self::German => 3,
+                Self::Spanish => 4,
+                Self::Italian => 5,
+            }]
+            .as_str()
+        })
     }
     pub fn format(self, key: &'static str, args: &[(&str, String)]) -> String {
-        let mut result = self.text(key).to_owned();
-        for (name, value) in args {
-            result = result.replace(&format!("{{{name}}}"), value);
+        let mut template = self.text(key);
+        let mut result = String::with_capacity(template.len());
+        while let Some(start) = template.find('{') {
+            result.push_str(&template[..start]);
+            let Some(end) = template[start..].find('}').map(|end| start + end) else {
+                result.push_str(&template[start..]);
+                return result;
+            };
+            let name = &template[start + 1..end];
+            result.push_str(
+                args.iter()
+                    .find(|(key, _)| *key == name)
+                    .map_or(&template[start..=end], |(_, value)| value.as_str()),
+            );
+            template = &template[end + 1..];
         }
+        result.push_str(template);
         result
     }
     pub fn from_code(code: &str) -> Option<Self> {
@@ -110,13 +134,13 @@ mod tests {
     }
     #[test]
     fn every_catalog_entry_has_all_languages_and_matching_parameters() {
-        let rows: Vec<[&str; 6]> = serde_json::from_str(include_str!("locales.json")).unwrap();
+        let rows: Vec<[String; 6]> = serde_json::from_str(include_str!("locales.json")).unwrap();
         assert_eq!(rows.len(), CATALOG.len(), "duplicate source messages");
         for row in rows {
-            for translation in row {
+            for translation in &row {
                 assert!(!translation.trim().is_empty());
                 assert_eq!(
-                    placeholders(row[0]),
+                    placeholders(&row[0]),
                     placeholders(translation),
                     "{}",
                     row[0]
@@ -138,6 +162,13 @@ mod tests {
         assert_eq!(
             Language::French.text("Unknown future message"),
             "Unknown future message"
+        );
+        assert_eq!(
+            Language::English.format(
+                "Loaded {title} — {count} passages",
+                &[("title", "{count}.txt".into()), ("count", "7".into())]
+            ),
+            "Loaded {count}.txt — 7 passages"
         );
     }
 }

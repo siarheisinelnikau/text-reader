@@ -56,14 +56,14 @@ mod tests {
         let config = config().unwrap();
         let fixture = |checksum: bool| {
             let mut assets = vec![
-                serde_json::json!({"name":"TextReader-v0.2.0.exe","size":2048,
-                "browser_download_url":format!("{REPOSITORY}/releases/download/v0.2.0/TextReader-v0.2.0.exe")}),
+                serde_json::json!({"name":"TextReader-v0.3.0.exe","size":2048,
+                "browser_download_url":format!("{REPOSITORY}/releases/download/v0.3.0/TextReader-v0.3.0.exe")}),
             ];
             if checksum {
                 assets.push(serde_json::json!({"name":"SHA256SUMS.txt","size":100,
-                "browser_download_url":format!("{REPOSITORY}/releases/download/v0.2.0/SHA256SUMS.txt")}));
+                "browser_download_url":format!("{REPOSITORY}/releases/download/v0.3.0/SHA256SUMS.txt")}));
             }
-            serde_json::json!({"tag_name":"v0.2.0","html_url":format!("{REPOSITORY}/releases/tag/v0.2.0"),
+            serde_json::json!({"tag_name":"v0.3.0","html_url":format!("{REPOSITORY}/releases/tag/v0.3.0"),
                 "draft":false,"prerelease":false,"assets":assets}).to_string()
         };
         assert!(
