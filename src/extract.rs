@@ -47,7 +47,7 @@ pub fn open(path: &Path) -> Result<Document> {
             ZipArchive::new(file).context("Invalid EPUB archive")?,
         ),
         "pdf" => bail!(
-            "PDF extraction is not included in v0.1. Export the text as TXT or paste it here. Scanned PDFs require external OCR."
+            "PDF extraction is not included. Export the text as TXT or paste it here. Scanned PDFs require external OCR."
         ),
         _ => bail!(
             "Unsupported format. Choose UTF-8/UTF-16 TXT, Markdown, DOCX or an unencrypted EPUB."
@@ -60,7 +60,9 @@ pub fn decode_text(bytes: &[u8]) -> Result<String> {
         ensure!(bytes.len().is_multiple_of(2), "Truncated UTF-16 text.");
         let le = bytes[0] == 0xff;
         let units = bytes[2..]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|b| {
                 if le {
                     u16::from_le_bytes([b[0], b[1]])

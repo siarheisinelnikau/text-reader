@@ -20,9 +20,11 @@ The original teal identity is retained. Both palettes define readable text, seco
 
 The opposite-system-theme regression first reproduced the pre-fix Light-to-Dark override, then verified both saved choices retain context theme, custom palette and typography across opposite/matching/opposite OS-theme events. The UI regressions click the actual Language and Dark controls in an in-process fixture, verify dirty/persisted preferences, keep Settings open across localization, return with translated Done, preserve voice/cursor, and settle to no repaint deadline. All six languages were checked at 900 × 620 logical pixels and 150% scaling. Storage tests preserve legacy voice/positions/startup opt-out and round-trip appearance choices; catalog tests retain document-title placeholder characters literally.
 
+UTF-16 decoding and the opt-in PCM validator use fixed-array chunks to address the `chunks_exact_to_as_chunks` lint reported by the stable GitHub runner. Local checks used rustc/Clippy 1.96.1; publication coordination validates the final stable GitHub CI run separately. The obsolete version qualifier was removed from the unsupported-PDF diagnostic.
+
 ## Real rendered evidence
 
-After pinning the explicit theme preference, the exact rebuilt `TextReader-v0.2.0.exe` generated six isolated render-save-exit captures, four finite CPU frames each. Every process exited successfully. All six image hashes matched the earlier captures, and the new PNGs were reopened and reviewed:
+After the final theme and CI compatibility fixes, the exact rebuilt `TextReader-v0.2.0.exe` generated six isolated render-save-exit captures, four finite CPU frames each. Every process exited successfully. All six image hashes matched the earlier captures, and the new PNGs were reopened and reviewed:
 
 | Screen | Language/theme | Size and scaling | Result |
 | --- | --- | --- | --- |
@@ -37,20 +39,20 @@ These images establish the client-area layout and palettes. They do not depict O
 
 ## Bounded lifecycle measurements
 
-Source review confirmed `egui_software_backend` CPU rasterization, a retained BGRA bitmap and softbuffer's Windows GDI presentation. The event loop uses Wait/WaitUntil, skips hidden rasterization, and invalidates on useful events. The updated packaged binary ran one isolated populated diagnostic as PID 39892 with no workers/network/audio or injected input. It exited normally within the 28-second external deadline.
+Source review confirmed `egui_software_backend` CPU rasterization, a retained BGRA bitmap and softbuffer's Windows GDI presentation. The event loop uses Wait/WaitUntil, skips hidden rasterization, and invalidates on useful events. The updated packaged binary ran one isolated populated diagnostic as PID 35484 with no workers/network/audio or injected input. It exited normally within the 28-second external deadline.
 
 | Settled state | Sample | CPU, one core | Layouts | Rasters | Presents |
 | --- | --- | --- | --- | --- | --- |
 | Visible | 5.000 s | 0.00% | 0 | 0 | 0 |
-| Minimized | 5.000 s | 0.31% | 0 | 0 | 0 |
+| Minimized | 5.000 s | 0.00% | 0 | 0 | 0 |
 | Restored | 5.000 s | 0.00% | 0 | 0 | 0 |
 
-Visible/restored machine-normalized CPU is 0.00%; the minimized sample recorded 0.31% of one core (about 0.016% machine-normalized across 20 logical processors) without any layout, rasterization or presentation. Four useful total frames were produced across startup and lifecycle transitions. The native window reported 16px/32px small/large icon handles at 100% scale. See the [raw measured report](validation/localization-v0.2.0-gate.json).
+Machine-normalized CPU is also 0.00% for these zero-CPU samples across 20 logical processors. Four useful total frames were produced across startup and lifecycle transitions. The native window reported 16px/32px small/large icon handles at 100% scale. See the [raw measured report](validation/localization-v0.2.0-gate.json).
 
 The isolated idle/minimized/restore rendering gate passed. GPU telemetry, subjective interaction smoothness, arbitrary real documents/voices, OS-native dialog localization, clean-machine compatibility and a live release download/install round trip remain outside this check. The diagnostic does not measure normal speech/background worker load; those paths were unchanged.
 
 ## Prepared artifact
 
-- `dist/TextReader-v0.2.0.exe`, 6,969,344 bytes, Windows x64.
-- SHA-256: `82943ee3e43e926d53ad078f2bbeea6ebd78da18926a34e1dc800f32bf7f0556`.
+- `dist/TextReader-v0.2.0.exe`, 6,968,832 bytes, Windows x64.
+- SHA-256: `21103b52150545eb2a9ca6c0ed968a098b02c4199597fa70d21a89ce44d1877b`.
 - `dist/SHA256SUMS.txt` and the companion updater MIT notice are prepared. Root publication coordination owns GitHub source/release operations.
