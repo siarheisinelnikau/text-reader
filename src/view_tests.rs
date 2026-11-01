@@ -272,3 +272,37 @@ fn translated_settings_and_dark_palette_preserve_reading_state_and_settle() {
         assert_eq!(ui.repaint_delay, Duration::MAX);
     }
 }
+
+#[test]
+fn settings_controls_apply_and_save_language_and_theme_without_restart() {
+    let mut ui = ReaderUi::new(vec2(1180.0, 820.0), 1.0);
+    let find = |ui: &ReaderUi, label: &str| {
+        let bounds = ui
+            .nodes
+            .iter()
+            .find(|node| node.label() == Some(label) || node.value() == Some(label))
+            .unwrap()
+            .bounds()
+            .unwrap();
+        egui::pos2(
+            ((bounds.x0 + bounds.x1) / 2.0) as f32,
+            ((bounds.y0 + bounds.y1) / 2.0) as f32,
+        )
+    };
+    ui.click_at(find(&ui, "Dark"));
+    ui.settle();
+    assert_eq!(ui.app.session.theme, storage::Theme::Dark);
+    assert!(ui.app.dirty && ui.ctx.style().visuals.dark_mode);
+    ui.click_at(ui.bounds(Role::ComboBox, "English").center());
+    ui.click_at(find(&ui, "Русский"));
+    ui.settle();
+    assert_eq!(ui.app.session.language, Language::Russian);
+    assert!(ui.app.settings);
+    ui.click(Language::Russian.text("Done"));
+    ui.settle();
+    assert!(!ui.app.settings);
+    assert_eq!(ui.app.cursor, 1);
+    assert_eq!(ui.app.session.language, Language::Russian);
+    assert_eq!(ui.app.session.theme, storage::Theme::Dark);
+    assert_eq!(ui.repaint_delay, Duration::MAX);
+}

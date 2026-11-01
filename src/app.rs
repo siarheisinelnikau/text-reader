@@ -540,7 +540,7 @@ impl App {
                         Ok(Some(update)) => {
                             self.update_message = Message::with(
                                 "Version {version} is available.",
-                                &[("version", update.version.clone())],
+                                &[("version", update.version.to_string())],
                             );
                             self.message = self.update_message.clone();
                             self.available = Some(update);
