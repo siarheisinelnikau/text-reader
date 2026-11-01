@@ -1,7 +1,10 @@
 param([Parameter(Mandatory=$true)][string]$Output)
 $ErrorActionPreference='Stop'
 $repoRoot=Split-Path -Parent $PSScriptRoot
-$executable=Join-Path $repoRoot 'dist/TextReader-v0.1.0.exe'
+$manifest=Get-Content -LiteralPath (Join-Path $repoRoot 'Cargo.toml') -Raw
+$version=[regex]::Match($manifest,'(?m)^version\s*=\s*"([^"]+)"').Groups[1].Value
+if (-not $version) {throw 'Cannot find package version.'}
+$executable=Join-Path $repoRoot "dist/TextReader-v$version.exe"
 $outputPath=[System.IO.Path]::GetFullPath($Output,$repoRoot)
 if (Test-Path -LiteralPath $outputPath) {throw "Diagnostic output already exists: $outputPath"}
 New-Item -ItemType Directory -Path (Split-Path -Parent $outputPath) -Force | Out-Null
