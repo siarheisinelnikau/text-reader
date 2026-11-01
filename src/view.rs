@@ -77,7 +77,7 @@ impl App {
                     let c = rect.center();
                     ui.painter().line_segment(
                         [c + vec2(0.0, -10.0), c + vec2(0.0, 10.0)],
-                        egui::Stroke::new(1.5, Color32::WHITE),
+                        egui::Stroke::new(1.5_f32, Color32::WHITE),
                     );
                     for side in [-1.0, 1.0] {
                         let points = vec![
@@ -88,7 +88,7 @@ impl App {
                         ];
                         ui.painter().add(egui::Shape::line(
                             points,
-                            egui::Stroke::new(1.5, Color32::WHITE),
+                            egui::Stroke::new(1.5_f32, Color32::WHITE),
                         ));
                     }
                     ui.add_space(2.0);
@@ -377,7 +377,7 @@ impl App {
                 egui::Frame::new()
                     .fill(palette.surface)
                     .corner_radius(16)
-                    .stroke(egui::Stroke::new(1.0, palette.line))
+                    .stroke(egui::Stroke::new(1.0_f32, palette.line))
                     .inner_margin(24)
                     .show(ui, |ui| {
                         ui.set_min_width((ui.available_width()).max(100.0));

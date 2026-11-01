@@ -12,15 +12,15 @@ The original teal identity is retained. Both palettes define readable text, seco
 
 ## Automated checks
 
-- `cargo fmt --all -- --check`: passed.
-- `cargo clippy --locked --offline --all-targets -- -D warnings`: passed. No Clippy diagnostics were reported.
+- `cargo +1.99.1 fmt --all -- --check`: passed.
+- `cargo +1.99.1 clippy --locked --offline --all-targets -- -D warnings`: passed. No Clippy diagnostics were reported.
 - `cargo test --locked --offline --all-targets`: 26 passed (12 library, 9 actual egui component tests, 1 opposite-system-theme regression, 4 document-import tests). The silent SAPI example has no tests and was not executed.
 - Optimized Windows x64 build with `-C target-feature=+crt-static`: passed. Cargo checks/builds used the shared three-slot limiter, two jobs per invocation and repository-local target output.
 - Artifact verifier: x64 PE32+, Windows GUI subsystem, matching SHA-256, required embedded icon resources at 16/20/24/32/40/48/64/128/256 px. Native DrawIconEx resource proof inspected on light/dark backgrounds; book artwork is intact.
 
 The opposite-system-theme regression first reproduced the pre-fix Light-to-Dark override, then verified both saved choices retain context theme, custom palette and typography across opposite/matching/opposite OS-theme events. The UI regressions click the actual Language and Dark controls in an in-process fixture, verify dirty/persisted preferences, keep Settings open across localization, return with translated Done, preserve voice/cursor, and settle to no repaint deadline. All six languages were checked at 900 × 620 logical pixels and 150% scaling. Storage tests preserve legacy voice/positions/startup opt-out and round-trip appearance choices; catalog tests retain document-title placeholder characters literally.
 
-UTF-16 decoding and the opt-in PCM validator use fixed-array chunks to address the `chunks_exact_to_as_chunks` lint reported by the stable GitHub runner. Local checks used rustc/Clippy 1.96.1; publication coordination validates the final stable GitHub CI run separately. The obsolete version qualifier was removed from the unsupported-PDF diagnostic.
+UTF-16 decoding and the opt-in PCM validator use fixed-array chunks to address the `chunks_exact_to_as_chunks` lint reported by the stable GitHub runner. The seven renderer Stroke widths explicitly use f32 literals to address `float_literal_f32_fallback`. The final source passed isolated Rust 1.99.1 Clippy and rustfmt, matching the stable GitHub runner. Runtime tests and the measured optimized artifact used Rust 1.96.1. Publication coordination validates the final GitHub CI run separately. The obsolete version qualifier was removed from the unsupported-PDF diagnostic.
 
 ## Real rendered evidence
 
@@ -39,7 +39,7 @@ These images establish the client-area layout and palettes. They do not depict O
 
 ## Bounded lifecycle measurements
 
-Source review confirmed `egui_software_backend` CPU rasterization, a retained BGRA bitmap and softbuffer's Windows GDI presentation. The event loop uses Wait/WaitUntil, skips hidden rasterization, and invalidates on useful events. The updated packaged binary ran one isolated populated diagnostic as PID 35484 with no workers/network/audio or injected input. It exited normally within the 28-second external deadline.
+Source review confirmed `egui_software_backend` CPU rasterization, a retained BGRA bitmap and softbuffer's Windows GDI presentation. The event loop uses Wait/WaitUntil, skips hidden rasterization, and invalidates on useful events. The updated packaged binary ran one isolated populated diagnostic as PID 40060 with no workers/network/audio or injected input. It exited normally within the 28-second external deadline.
 
 | Settled state | Sample | CPU, one core | Layouts | Rasters | Presents |
 | --- | --- | --- | --- | --- | --- |
@@ -54,5 +54,5 @@ The isolated idle/minimized/restore rendering gate passed. GPU telemetry, subjec
 ## Prepared artifact
 
 - `dist/TextReader-v0.2.0.exe`, 6,968,832 bytes, Windows x64.
-- SHA-256: `21103b52150545eb2a9ca6c0ed968a098b02c4199597fa70d21a89ce44d1877b`.
+- SHA-256: `6fe743dd158ad975a0dcf5e8fcac0f1977b349b075042e69b4079b997c36916c`.
 - `dist/SHA256SUMS.txt` and the companion updater MIT notice are prepared. Root publication coordination owns GitHub source/release operations.

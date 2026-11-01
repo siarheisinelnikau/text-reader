@@ -11,7 +11,7 @@
       16
     ]
   },
-  "process_id": 35484,
+  "process_id": 40060,
   "profile": "optimized release required",
   "repaint_causes": {
     "C:\\Users\\user\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\egui-0.33.3\\src\\containers\\scroll_area.rs:1448 ": 1
@@ -28,7 +28,7 @@
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0003111,
+      "seconds": 5.0001208,
       "settled": true,
       "state": "visible_idle",
       "state_valid": true
@@ -44,7 +44,7 @@
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0004999,
+      "seconds": 5.0003216,
       "settled": true,
       "state": "minimized_idle",
       "state_valid": true
@@ -60,7 +60,7 @@
       "raster_ms": 0.0,
       "rasters": 0,
       "retained_blits": 0,
-      "seconds": 5.0002006,
+      "seconds": 5.0001166,
       "settled": true,
       "state": "restored_idle",
       "state_valid": true
@@ -69,11 +69,11 @@
   "scenario": "isolated populated fixture; no worker/network/audio tasks; no input automation",
   "scope": "idle/minimized/restore scheduling and CPU plus native icon assignment; not perceived interaction smoothness or GPU telemetry",
   "totals": {
-    "layout_ms": 3.113,
+    "layout_ms": 4.2520999999999995,
     "layouts": 4,
-    "present_ms": 4.7257,
+    "present_ms": 10.865499999999999,
     "presents": 4,
-    "raster_ms": 15.330000000000002,
+    "raster_ms": 29.6982,
     "rasters": 4,
     "retained_blits": 0
   },
@@ -104,12 +104,12 @@
     "msvcrt.dll",
     "sechost.dll",
     "crypt32.dll",
-    "bcryptprimitives.dll",
     "secur32.dll",
+    "bcryptprimitives.dll",
     "imm32.dll",
     "ws2_32.dll",
-    "uxtheme.dll",
     "dwmapi.dll",
+    "uxtheme.dll",
     "SSPICLI.DLL",
     "MSCTF.dll",
     "kernel.appcore.dll",
