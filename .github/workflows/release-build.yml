@@ -1,0 +1,50 @@
+name: Checked release builds
+'on':
+  workflow_call: {}
+permissions:
+  contents: read
+env:
+  CARGO_BUILD_JOBS: '2'
+jobs:
+  check:
+    runs-on: windows-latest
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_TARGET_DIR: target
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - name: Provision shared updater source
+      shell: pwsh
+      run: ./scripts/provision-shared-updater.ps1
+    - name: Require the companion updater source
+      shell: pwsh
+      run: |
+        if (-not (Test-Path ../rust-auto-updator/crates/rust-auto-updator/Cargo.toml)) {
+          throw 'This local integration requires the rust-auto-updator workspace beside text-reader. Provision the companion source before standalone CI can run.'
+        }
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+      with:
+        components: rustfmt, clippy
+        toolchain: stable
+    - run: cargo fmt --all -- --check
+    - run: cargo clippy --locked --all-targets -j 2 -- -D warnings
+    - run: cargo test --locked --all-targets -j 2
+    - shell: pwsh
+      run: ./scripts/package.ps1
+    - shell: pwsh
+      run: ./scripts/verify-artifact.ps1
+    - shell: pwsh
+      run: |
+        ./scripts/capture.ps1 -Output .test-output/reader.png -Screen reader
+        ./scripts/capture.ps1 -Output .test-output/settings.png -Screen settings
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: TextReader-Windows-x64
+        path: |
+          dist/*.exe
+          dist/SHA256SUMS.txt
+    permissions:
+      contents: read
+    timeout-minutes: 30

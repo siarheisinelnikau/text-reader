@@ -1,0 +1,12 @@
+{
+  "repository": "siarheisinelnikau/text-reader",
+  "product": "TextReader",
+  "kind": "desktop",
+  "assets": [
+    {
+      "name": "TextReader-v{version}.exe"
+    }
+  ],
+  "notices": true,
+  "checksum_aliases": []
+}
